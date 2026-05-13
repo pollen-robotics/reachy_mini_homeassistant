@@ -29,15 +29,9 @@
       "active_app": { "name": "Active app" },
       "active_app_transport": { "name": "Active app transport" },
       "motor_mode": { "name": "Motor mode" },
-      "cpu": { "name": "CPU" },
-      "memory": { "name": "Memory" },
       "speaker_volume": { "name": "Speaker volume" },
       "mic_volume": { "name": "Microphone volume" },
-      "imu_temp": { "name": "IMU temperature" },
-      "imu_pitch": { "name": "Pitch" },
-      "imu_roll": { "name": "Roll" },
-      "voice_direction": { "name": "Voice direction" },
-      "uptime": { "name": "Uptime" }
+      "voice_direction": { "name": "Voice direction" }
     },
     "binary_sensor": {
       "awake": { "name": "Awake" },

@@ -1,9 +1,9 @@
 """Sensor entities for Reachy Mini.
 
-Each entity reads one key from the daemon's `/api/homeassistant/state`
-payload. Field-by-field metadata (units, device class, state class,
-icon) is declared once in :data:`SENSORS`; the runtime entity class
-is a thin lookup-by-key shim on top of the coordinator's cached dict.
+Each entity reads one key from the coordinator's unified dict, which
+is assembled from several SDK REST endpoints (see ``coordinator.py``).
+Field-by-field metadata (units, state class, icon) is declared once
+in :data:`SENSORS`; the runtime entity class is a thin lookup shim.
 """
 
 from __future__ import annotations
@@ -12,13 +12,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.sensor import (
-    SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime
+from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -54,24 +53,6 @@ SENSORS: tuple[ReachyMiniSensorDescription, ...] = (
         icon="mdi:engine",
     ),
     ReachyMiniSensorDescription(
-        key="cpu_pct",
-        translation_key="cpu",
-        json_key="cpu_pct",
-        native_unit_of_measurement=PERCENTAGE,
-        state_class=SensorStateClass.MEASUREMENT,
-        icon="mdi:cpu-64-bit",
-        suggested_display_precision=1,
-    ),
-    ReachyMiniSensorDescription(
-        key="mem_pct",
-        translation_key="memory",
-        json_key="mem_pct",
-        native_unit_of_measurement=PERCENTAGE,
-        state_class=SensorStateClass.MEASUREMENT,
-        icon="mdi:memory",
-        suggested_display_precision=1,
-    ),
-    ReachyMiniSensorDescription(
         key="speaker_volume",
         translation_key="speaker_volume",
         json_key="speaker_volume",
@@ -86,33 +67,6 @@ SENSORS: tuple[ReachyMiniSensorDescription, ...] = (
         icon="mdi:microphone",
     ),
     ReachyMiniSensorDescription(
-        key="imu_temp_celsius",
-        translation_key="imu_temp",
-        json_key="imu_temp_celsius",
-        device_class=SensorDeviceClass.TEMPERATURE,
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=1,
-    ),
-    ReachyMiniSensorDescription(
-        key="imu_pitch_deg",
-        translation_key="imu_pitch",
-        json_key="imu_pitch_deg",
-        native_unit_of_measurement="°",
-        state_class=SensorStateClass.MEASUREMENT,
-        icon="mdi:angle-acute",
-        suggested_display_precision=1,
-    ),
-    ReachyMiniSensorDescription(
-        key="imu_roll_deg",
-        translation_key="imu_roll",
-        json_key="imu_roll_deg",
-        native_unit_of_measurement="°",
-        state_class=SensorStateClass.MEASUREMENT,
-        icon="mdi:angle-acute",
-        suggested_display_precision=1,
-    ),
-    ReachyMiniSensorDescription(
         key="doa_angle_rad",
         translation_key="voice_direction",
         json_key="doa_angle_rad",
@@ -120,15 +74,6 @@ SENSORS: tuple[ReachyMiniSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:account-voice",
         suggested_display_precision=2,
-    ),
-    ReachyMiniSensorDescription(
-        key="uptime_seconds",
-        translation_key="uptime",
-        json_key="uptime_seconds",
-        device_class=SensorDeviceClass.DURATION,
-        native_unit_of_measurement=UnitOfTime.SECONDS,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        icon="mdi:timer-outline",
     ),
 )
 

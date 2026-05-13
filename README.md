@@ -58,15 +58,9 @@ its stable `unit_id` (a hash of the audio device serial). Underneath:
 | Active app | — | Local Python app or WebRTC peer name |
 | Active app transport | — | `local` or `webrtc` |
 | Motor mode | — | `enabled` / `disabled` / `gravity_compensation` |
-| CPU | % | 30-second moving average |
-| Memory | % | Instant RAM usage |
 | Speaker volume | % | 0-100 |
 | Microphone volume | % | 0-100 |
-| IMU temperature | °C | Wireless only |
-| Pitch | ° | Wireless only — derived from IMU quaternion |
-| Roll | ° | Wireless only |
 | Voice direction | rad | 0 = left, π/2 = front, π = right |
-| Uptime | s | Daemon-process uptime |
 
 ### Binary sensors
 
@@ -74,7 +68,17 @@ its stable `unit_id` (a hash of the audio device serial). Underneath:
 |---|---|---|
 | Awake | `power` | True when motors are enabled or in gravity comp |
 | WebRTC active | `connectivity` | True when a remote session holds the slot |
-| Speech detected | `sound` | Mic-array VAD signal |
+| Speech detected | `sound` | Mic-array VAD signal (LAN-side speech-activity VAD) |
+
+### Not yet exposed
+
+The SDK doesn't currently expose REST routes for these; they're easy
+additive extensions if anyone wants them:
+
+| Field | Status |
+|---|---|
+| IMU pitch / roll / temperature | Wireless-only sensors. Add a `/api/state/imu` route in the SDK and the integration picks it up. |
+| CPU / memory / uptime | Daemon-process health metrics. Could be added as additive fields to `/api/daemon/status`. |
 
 ## Blueprints
 

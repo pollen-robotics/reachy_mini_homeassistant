@@ -24,10 +24,13 @@ def build_device_info(
     """Construct the DeviceInfo shown under Settings → Devices."""
     payload: dict[str, Any] = coordinator.data or {}
     unit_id = entry.data.get(CONF_UNIT_ID) or entry.entry_id
+    # model + manufacturer are constants for this integration —
+    # there's no per-device variation. sw_version comes from the
+    # daemon's /api/daemon/status `version` field.
     return DeviceInfo(
         identifiers={(DOMAIN, unit_id)},
-        manufacturer=payload.get("manufacturer") or "Pollen Robotics",
-        model=payload.get("model") or "ReachyMini",
+        manufacturer="Pollen Robotics",
+        model="Reachy Mini",
         name=f"Reachy Mini ({unit_id[:4]})" if len(unit_id) >= 4 else "Reachy Mini",
         sw_version=payload.get("firmware_version"),
         configuration_url=f"http://{coordinator.host}:{coordinator.port}/",

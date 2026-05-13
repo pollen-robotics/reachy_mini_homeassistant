@@ -34,7 +34,7 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_TIMEOUT,
     DOMAIN,
-    ENDPOINT_PATH,
+    ENDPOINT_STATUS,
     TXT_ROBOT_NAME,
     TXT_UNIT_ID,
 )
@@ -133,7 +133,11 @@ class ReachyMiniConfigFlow(ConfigFlow, domain=DOMAIN):
             if payload is None:
                 errors["base"] = "cannot_connect"
             else:
-                unit_id = payload.get(CONF_UNIT_ID)
+                # ``hardware_id`` on /api/daemon/status corresponds to
+                # the ``unit_id`` we set as the config entry's
+                # unique_id (same value, different name across the
+                # daemon's two surfaces).
+                unit_id = payload.get("hardware_id")
                 if unit_id:
                     await self.async_set_unique_id(unit_id)
                     self._abort_if_unique_id_configured(
@@ -171,10 +175,16 @@ class ReachyMiniConfigFlow(ConfigFlow, domain=DOMAIN):
     async def _fetch_state(
         self, host: str | None, port: int
     ) -> dict[str, Any] | None:
-        """Fetch the state endpoint once; return None on any failure."""
+        """Fetch /api/daemon/status; return None on any failure.
+
+        The daemon stamps ``type: "daemon_status"`` on every response
+        of that route — a cheap, daemon-specific sanity check that
+        we're actually talking to a Reachy Mini and not an unrelated
+        HTTP server that happens to return 200.
+        """
         if not host:
             return None
-        url = f"http://{host}:{port}{ENDPOINT_PATH}"
+        url = f"http://{host}:{port}{ENDPOINT_STATUS}"
         session = async_get_clientsession(self.hass)
         try:
             async with session.get(
@@ -184,11 +194,7 @@ class ReachyMiniConfigFlow(ConfigFlow, domain=DOMAIN):
                 if resp.status != 200:
                     return None
                 payload: dict[str, Any] = await resp.json()
-                # `model` is always populated by the SDK snapshot
-                # endpoint — a sanity check that we're actually
-                # talking to a Reachy Mini daemon and not a random
-                # HTTP server that happens to return 200.
-                if payload.get("model") != "ReachyMini":
+                if payload.get("type") != "daemon_status":
                     return None
                 return payload
         except (aiohttp.ClientError, TimeoutError, ValueError):
