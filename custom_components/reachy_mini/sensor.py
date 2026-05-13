@@ -17,7 +17,6 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -51,20 +50,6 @@ SENSORS: tuple[ReachyMiniSensorDescription, ...] = (
         translation_key="motor_mode",
         json_key="motor_mode",
         icon="mdi:engine",
-    ),
-    ReachyMiniSensorDescription(
-        key="speaker_volume",
-        translation_key="speaker_volume",
-        json_key="speaker_volume",
-        native_unit_of_measurement=PERCENTAGE,
-        icon="mdi:volume-high",
-    ),
-    ReachyMiniSensorDescription(
-        key="mic_volume",
-        translation_key="mic_volume",
-        json_key="mic_volume",
-        native_unit_of_measurement=PERCENTAGE,
-        icon="mdi:microphone",
     ),
     ReachyMiniSensorDescription(
         key="doa_angle_rad",

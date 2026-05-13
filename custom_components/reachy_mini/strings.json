@@ -29,14 +29,16 @@
       "active_app": { "name": "Active app" },
       "active_app_transport": { "name": "Active app transport" },
       "motor_mode": { "name": "Motor mode" },
-      "speaker_volume": { "name": "Speaker volume" },
-      "mic_volume": { "name": "Microphone volume" },
       "voice_direction": { "name": "Voice direction" }
     },
     "binary_sensor": {
       "awake": { "name": "Awake" },
       "webrtc_active": { "name": "WebRTC active" },
       "speech_detected": { "name": "Speech detected" }
+    },
+    "number": {
+      "speaker_volume": { "name": "Speaker volume" },
+      "mic_volume": { "name": "Microphone volume" }
     }
   }
 }

@@ -51,15 +51,13 @@ network, you can still **Manual configuration** with the daemon's IP.
 The integration creates one **device** per Reachy Mini, identified by
 its stable `unit_id` (a hash of the audio device serial). Underneath:
 
-### Sensors
+### Sensors (read-only)
 
 | Entity | Unit | Notes |
 |---|---|---|
 | Active app | — | Local Python app or WebRTC peer name |
 | Active app transport | — | `local` or `webrtc` |
 | Motor mode | — | `enabled` / `disabled` / `gravity_compensation` |
-| Speaker volume | % | 0-100 |
-| Microphone volume | % | 0-100 |
 | Voice direction | rad | 0 = left, π/2 = front, π = right |
 
 ### Binary sensors
@@ -69,6 +67,17 @@ its stable `unit_id` (a hash of the audio device serial). Underneath:
 | Awake | `power` | True when motors are enabled or in gravity comp |
 | WebRTC active | `connectivity` | True when a remote session holds the slot |
 | Speech detected | `sound` | Mic-array VAD signal (LAN-side speech-activity VAD) |
+
+### Numbers (controllable sliders)
+
+Drag the slider in the HA UI to change the value on the robot. The
+daemon may clamp/round to its supported range; the slider snaps to
+the value actually applied.
+
+| Entity | Unit | Notes |
+|---|---|---|
+| Speaker volume | % | 0-100. The daemon plays a short confirmation sound after each change — existing SDK behaviour. |
+| Microphone volume | % | 0-100. |
 
 ### Not yet exposed
 

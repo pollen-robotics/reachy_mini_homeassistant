@@ -18,6 +18,14 @@ ENDPOINT_DOA = "/api/state/doa"
 ENDPOINT_VOLUME_SPEAKER = "/api/volume/current"
 ENDPOINT_VOLUME_MIC = "/api/volume/microphone/current"
 
+# POST endpoints used by the controllable `number` entities.
+# Body: {"volume": <int 0-100>}.
+# Note: ENDPOINT_VOLUME_SPEAKER_SET plays a short confirmation sound
+# on the robot every time it's invoked — that's existing SDK
+# behaviour, not something the integration controls.
+ENDPOINT_VOLUME_SPEAKER_SET = "/api/volume/set"
+ENDPOINT_VOLUME_MIC_SET = "/api/volume/microphone/set"
+
 # Polling cadence. Matches HA's REST default and is plenty fast for
 # "is the robot awake / which app is running / who's speaking".
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
