@@ -4,14 +4,26 @@
 
 Adds a [Reachy Mini](https://github.com/pollen-robotics/reachy_mini) to Home
 Assistant with **zero YAML**. Drops a "Reachy Mini" device into your HA
-instance, polls the robot's daemon every 30 s, and creates sensors for
-motor state, active app, host CPU/memory, audio levels, IMU pitch/roll/
-temperature, microphone-array direction of arrival, and WebRTC session
-presence.
+instance, polls the robot's daemon every 30 s, and exposes:
 
-Works alongside the existing `_reachy-mini._tcp.local.` mDNS
-advertisement and `GET /api/homeassistant/state` endpoint that ship in
-the Reachy Mini SDK — no extra protocols, no broker, no auth.
+- read-only **sensors** for active app, app transport, and voice
+  direction (microphone-array DoA),
+- **binary sensors** for awake state, WebRTC session activity, and
+  speech detection,
+- a writable **select** for motor mode (enabled / disabled /
+  gravity compensation),
+- writable **number sliders** for speaker and microphone volume,
+- one-shot action **buttons** for wake up, go to sleep, stop/restart
+  the running app, play a test sound, and restart the daemon.
+
+Auto-discovery uses the `_reachy-mini._tcp.local.` mDNS advertisement
+the daemon ships out of the box. Polling fans out to several of the
+daemon's existing REST routes (`/api/daemon/status`,
+`/api/daemon/robot-app-lock-status`, `/api/state/doa`,
+`/api/volume/current`, `/api/volume/microphone/current`); writes POST
+to `/api/motors/set_mode/{mode}`, `/api/move/play/{wake_up,goto_sleep}`,
+`/api/apps/{stop,restart}-current-app`, `/api/volume/set`, etc. No
+extra protocols, no broker, no auth.
 
 ## Install
 
@@ -34,13 +46,15 @@ the Reachy Mini SDK — no extra protocols, no broker, no auth.
 
 ## Use
 
-1. Make sure your Reachy Mini daemon is running on the **same LAN** and
-   on a recent version (the `/api/homeassistant/state` endpoint must
-   exist — that's the [`feat/homeassistant` branch](https://github.com/pollen-robotics/reachy_mini/tree/feat/homeassistant)
-   or any release that includes it).
+1. Make sure your Reachy Mini daemon is running on the **same LAN**.
+   For *auto-discovery* you need a daemon that advertises
+   `model=ReachyMini` in its mDNS TXT record — that's the
+   [`feat/homeassistant` branch](https://github.com/pollen-robotics/reachy_mini/tree/feat/homeassistant)
+   or any release that includes it. For *manual setup* any current
+   daemon will do (the integration probes `/api/daemon/status`).
 2. Within ~30 s of HA starting, you'll see a **"Discovered: Reachy Mini"**
    card under **Settings → Devices & Services**. Click **Add**.
-3. Confirm — your Reachy Mini appears as a device with all sensors
+3. Confirm — your Reachy Mini appears as a device with all entities
    grouped underneath, identified by its stable `unit_id`.
 
 No DNS / no IPs to type. If `.local` resolution is broken on your
@@ -136,25 +150,36 @@ then *Import* and *Create automation* in HA.
 
 **"Cannot connect" when adding manually.**
 
-`curl http://<host>:8000/api/homeassistant/state` — if that returns a
-JSON blob with `schema_version`, the integration should also work. If
-not, check the daemon logs.
+`curl http://<host>:8000/api/daemon/status` — if that returns a JSON
+blob with `"type": "daemon_status"` and a `version` field, the
+integration should also work. If not, check the daemon logs.
 
 **Entities show `unknown` after add.**
 
 The daemon backend hasn't finished starting yet (motor configuration
-takes ~5-10 s on first boot). Wait one update interval (30 s).
+takes ~5–10 s on first boot). Wait one update interval (30 s).
+
+**Some entities are `unavailable` but others work.**
+
+By design — the integration fans out across several SDK endpoints in
+parallel each tick, and one failing endpoint only takes down the
+entities backed by it (e.g. `/api/state/doa` returning 404 because
+audio is disabled leaves the speech / voice-direction entities
+unavailable but everything else keeps polling normally).
 
 ## Design notes
 
-This integration is intentionally tiny: ~400 lines of Python. It
-consumes the `GET /api/homeassistant/state` endpoint that ships in the
-upstream Reachy Mini SDK; **no protocol logic, no custom queries, no
-schema parsing beyond the JSON fields** the SDK already documents.
+The integration is a thin client over the daemon's existing REST
+surface — no extra protocols, no schema parsing beyond the documented
+fields each endpoint returns. The fan-out coordinator (~80 lines of
+Python) calls five GET endpoints in parallel each poll and does the
+HA-shaping (`awake`, `active_app_transport`, `webrtc_active`,
+`active_app`) locally on top of the raw values. Writes POST to the
+same routes the dashboard / SDK clients have always used.
 
-That means the integration depends only on the SDK's documented
-`schema_version: 1` contract. When the schema bumps, this integration
-bumps too — never silently.
+That means upgrading the daemon to a newer release rarely requires
+upgrading the integration too — only renames or removals of the
+specific routes the integration calls would break it.
 
 ## License
 
