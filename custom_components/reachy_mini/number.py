@@ -9,11 +9,8 @@ robot actually applied (the daemon may clamp / round).
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
-from typing import Any
 
-import aiohttp
 from homeassistant.components.number import (
     NumberEntity,
     NumberEntityDescription,
@@ -22,19 +19,15 @@ from homeassistant.components.number import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
-    DEFAULT_TIMEOUT,
     DOMAIN,
     ENDPOINT_VOLUME_MIC_SET,
     ENDPOINT_VOLUME_SPEAKER_SET,
 )
 from .coordinator import ReachyMiniCoordinator
 from .entity import ReachyMiniEntity
-
-_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -111,30 +104,8 @@ class ReachyMiniVolumeNumber(ReachyMiniEntity, NumberEntity):
         return float(value) if value is not None else None
 
     async def async_set_native_value(self, value: float) -> None:
-        """POST the new volume to the daemon and refresh the coordinator.
-
-        The daemon may clamp or round the requested value (it returns
-        the applied value in the response); we don't try to predict
-        that — just request an immediate coordinator refresh so the
-        slider snaps to whatever the daemon decided.
-        """
-        url = f"{self.coordinator.base_url}{self.entity_description.set_path}"
-        body = {"volume": int(value)}
-        session = async_get_clientsession(self.hass)
-        try:
-            async with session.post(
-                url,
-                json=body,
-                timeout=aiohttp.ClientTimeout(total=DEFAULT_TIMEOUT),
-            ) as resp:
-                resp.raise_for_status()
-        except (aiohttp.ClientError, TimeoutError) as err:
-            _LOGGER.warning(
-                "Failed to set %s on Reachy Mini: %s",
-                self.entity_description.key,
-                err,
-            )
-            raise
-
-        # Snap the UI to the value the daemon actually applied.
-        await self.coordinator.async_request_refresh()
+        """POST the new volume to the daemon; coordinator handles refresh."""
+        await self.coordinator.async_post(
+            self.entity_description.set_path,
+            body={"volume": int(value)},
+        )

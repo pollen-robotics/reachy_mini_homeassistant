@@ -26,6 +26,20 @@ ENDPOINT_VOLUME_MIC = "/api/volume/microphone/current"
 ENDPOINT_VOLUME_SPEAKER_SET = "/api/volume/set"
 ENDPOINT_VOLUME_MIC_SET = "/api/volume/microphone/set"
 
+# Other writable endpoints used by select / button entities.
+ENDPOINT_MOTOR_SET_MODE = "/api/motors/set_mode/{mode}"  # path-templated
+ENDPOINT_MOVE_WAKE_UP = "/api/move/play/wake_up"
+ENDPOINT_MOVE_GOTO_SLEEP = "/api/move/play/goto_sleep"
+ENDPOINT_APP_STOP_CURRENT = "/api/apps/stop-current-app"
+ENDPOINT_APP_RESTART_CURRENT = "/api/apps/restart-current-app"
+ENDPOINT_VOLUME_TEST_SOUND = "/api/volume/test-sound"
+ENDPOINT_DAEMON_RESTART = "/api/daemon/restart"
+
+# Motor mode values — must match the SDK's MotorControlMode enum
+# `.value` strings. Kept here as a tuple so the select dropdown
+# options stay in sync with the SDK without depending on its types.
+MOTOR_MODES: tuple[str, ...] = ("enabled", "disabled", "gravity_compensation")
+
 # Polling cadence. Matches HA's REST default and is plenty fast for
 # "is the robot awake / which app is running / who's speaking".
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)

@@ -130,6 +130,31 @@ class ReachyMiniCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("Reachy Mini fetch %s failed: %s", path, err)
             return None
 
+    async def async_post(
+        self, path: str, *, body: dict[str, Any] | None = None
+    ) -> None:
+        """POST to a daemon endpoint and refresh coordinator state.
+
+        Shared helper for the integration's writable entities
+        (number sliders, select dropdowns, action buttons). Logs and
+        re-raises on failure so HA surfaces the action as failed in
+        the UI. Triggers an immediate coordinator refresh on success
+        so the state snaps to whatever the daemon actually applied —
+        users don't have to wait up to 30 s for the next poll.
+        """
+        url = f"{self.base_url}{path}"
+        try:
+            async with self._session.post(
+                url,
+                json=body,
+                timeout=aiohttp.ClientTimeout(total=DEFAULT_TIMEOUT),
+            ) as resp:
+                resp.raise_for_status()
+        except (aiohttp.ClientError, TimeoutError) as err:
+            _LOGGER.warning("Reachy Mini POST %s failed: %s", path, err)
+            raise
+        await self.async_request_refresh()
+
     async def _async_update_data(self) -> dict[str, Any]:
         """Poll all endpoints in parallel and assemble the unified dict."""
         status, app_lock, doa, vol_speaker, vol_mic = await asyncio.gather(

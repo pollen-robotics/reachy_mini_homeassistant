@@ -28,7 +28,6 @@
     "sensor": {
       "active_app": { "name": "Active app" },
       "active_app_transport": { "name": "Active app transport" },
-      "motor_mode": { "name": "Motor mode" },
       "voice_direction": { "name": "Voice direction" }
     },
     "binary_sensor": {
@@ -39,6 +38,17 @@
     "number": {
       "speaker_volume": { "name": "Speaker volume" },
       "mic_volume": { "name": "Microphone volume" }
+    },
+    "select": {
+      "motor_mode": { "name": "Motor mode" }
+    },
+    "button": {
+      "wake_up": { "name": "Wake up" },
+      "goto_sleep": { "name": "Go to sleep" },
+      "stop_current_app": { "name": "Stop current app" },
+      "restart_current_app": { "name": "Restart current app" },
+      "play_test_sound": { "name": "Play test sound" },
+      "restart_daemon": { "name": "Restart daemon" }
     }
   }
 }

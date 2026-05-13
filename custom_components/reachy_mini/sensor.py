@@ -46,12 +46,6 @@ SENSORS: tuple[ReachyMiniSensorDescription, ...] = (
         icon="mdi:transit-connection-variant",
     ),
     ReachyMiniSensorDescription(
-        key="motor_mode",
-        translation_key="motor_mode",
-        json_key="motor_mode",
-        icon="mdi:engine",
-    ),
-    ReachyMiniSensorDescription(
         key="doa_angle_rad",
         translation_key="voice_direction",
         json_key="doa_angle_rad",

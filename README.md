@@ -57,7 +57,6 @@ its stable `unit_id` (a hash of the audio device serial). Underneath:
 |---|---|---|
 | Active app | — | Local Python app or WebRTC peer name |
 | Active app transport | — | `local` or `webrtc` |
-| Motor mode | — | `enabled` / `disabled` / `gravity_compensation` |
 | Voice direction | rad | 0 = left, π/2 = front, π = right |
 
 ### Binary sensors
@@ -67,6 +66,12 @@ its stable `unit_id` (a hash of the audio device serial). Underneath:
 | Awake | `power` | True when motors are enabled or in gravity comp |
 | WebRTC active | `connectivity` | True when a remote session holds the slot |
 | Speech detected | `sound` | Mic-array VAD signal (LAN-side speech-activity VAD) |
+
+### Select (writable dropdown)
+
+| Entity | Options | Notes |
+|---|---|---|
+| Motor mode | `enabled` / `disabled` / `gravity_compensation` | Picking an option POSTs to `/api/motors/set_mode/{mode}`. Use `disabled` as a soft E-stop (motors release torque). |
 
 ### Numbers (controllable sliders)
 
@@ -78,6 +83,17 @@ the value actually applied.
 |---|---|---|
 | Speaker volume | % | 0-100. The daemon plays a short confirmation sound after each change — existing SDK behaviour. |
 | Microphone volume | % | 0-100. |
+
+### Buttons (one-shot actions)
+
+| Entity | Action | Notes |
+|---|---|---|
+| Wake up | `POST /api/move/play/wake_up` | Goes through the wake-up move; the "Awake" binary sensor follows. |
+| Go to sleep | `POST /api/move/play/goto_sleep` | Plays the sleep move and releases torque. |
+| Stop current app | `POST /api/apps/stop-current-app` | Kills the currently running managed app (no-op when free). |
+| Restart current app | `POST /api/apps/restart-current-app` | Stop + start the current app — handy if it got stuck. |
+| Play test sound | `POST /api/volume/test-sound` | Plays `impatient1.wav` — quick speaker check. |
+| Restart daemon | `POST /api/daemon/restart` | Soft restart of the daemon process. Use sparingly. |
 
 ### Not yet exposed
 
