@@ -70,7 +70,7 @@ async def async_setup_entry(
 
 
 class ReachyMiniSensor(ReachyMiniEntity, SensorEntity):
-    """A single value from the aggregator endpoint."""
+    """A single value pulled by JSON key from the coordinator's cached state."""
 
     entity_description: ReachyMiniSensorDescription
 

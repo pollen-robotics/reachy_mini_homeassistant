@@ -1,18 +1,23 @@
 """The Reachy Mini integration.
 
-Polled snapshot of robot state, served by the Reachy Mini daemon at
-`GET /api/homeassistant/state`. The integration's only job is to:
+A thin client over the Reachy Mini daemon's existing REST surface.
+Its only job is to:
 
 1. Be claimed by HA when the daemon's `_reachy-mini._tcp.local.` mDNS
-   record appears on the LAN (the matching is declared in
-   `manifest.json`).
-2. Drive a :class:`DataUpdateCoordinator` that polls the endpoint on
-   the configured schedule.
-3. Expose the JSON keys as `sensor.*` and `binary_sensor.*` entities
-   grouped under a single Reachy Mini device.
+   record appears on the LAN — the matching is declared in
+   `manifest.json` and filtered by the `model=ReachyMini` TXT property.
+2. Drive a :class:`DataUpdateCoordinator` that polls several daemon
+   endpoints in parallel (`/api/daemon/status`,
+   `/api/daemon/robot-app-lock-status`, `/api/state/doa`,
+   `/api/volume/current`, `/api/volume/microphone/current`) and
+   assembles a unified state dict — including HA-shaped derivations
+   (`awake`, `active_app_transport`, `webrtc_active`).
+3. Expose that dict as entities across the sensor, binary_sensor,
+   number, select, and button platforms, grouped under a single
+   Reachy Mini device.
 
-The integration carries no robot-side logic; everything it shows comes
-from the upstream daemon's documented `schema_version: 1` contract.
+The integration carries no robot-side logic; it depends only on the
+daemon's documented routes.
 """
 
 from __future__ import annotations

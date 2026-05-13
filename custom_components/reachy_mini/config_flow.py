@@ -8,9 +8,9 @@ Two entry points:
   Mini" card and confirms with one click.
 - :meth:`async_step_user` — triggered when the user clicks
   Settings → Devices & Services → "Add Integration" → "Reachy Mini".
-  Takes a hostname + port, probes the aggregator endpoint to confirm,
-  reads `unit_id` from the response to deduplicate against an
-  existing entry.
+  Takes a hostname + port, probes ``/api/daemon/status`` to confirm
+  a Reachy Mini daemon is reachable, reads ``hardware_id`` from the
+  response to deduplicate against an existing entry.
 
 Both paths converge on the same config entry, identified by `unit_id`
 so the same physical robot can never be added twice (re-discoveries
@@ -169,7 +169,7 @@ class ReachyMiniConfigFlow(ConfigFlow, domain=DOMAIN):
     # ------------------------------------------------------------------
 
     async def _probe(self, host: str | None, port: int) -> bool:
-        """Return True iff the aggregator endpoint responds with valid JSON."""
+        """Return True iff /api/daemon/status responds with valid JSON."""
         return (await self._fetch_state(host, port)) is not None
 
     async def _fetch_state(

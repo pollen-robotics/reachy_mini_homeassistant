@@ -52,9 +52,5 @@ TXT_MANUFACTURER = "manufacturer"
 TXT_VERSION = "version"
 TXT_ROBOT_NAME = "robot_name"
 
-# The integration's own schema_version for the *coordinator data dict*.
-# Bumps when the keys the entity classes read change in a breaking way.
-INTEGRATION_SCHEMA_VERSION = 2
-
 # Config entry data keys.
 CONF_UNIT_ID = "unit_id"
