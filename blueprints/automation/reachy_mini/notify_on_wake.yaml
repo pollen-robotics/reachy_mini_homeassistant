@@ -7,7 +7,7 @@ blueprint:
 
 
     **Requires** the `binary_sensor.reachy_mini_awake` entity created
-    by the Reachy Mini `rest:` block — see
+    by the Reachy Mini Home Assistant integration — see
     https://github.com/pollen-robotics/reachy_mini_homeassistant
   domain: automation
   author: Pollen Robotics
@@ -16,34 +16,23 @@ blueprint:
     awake_entity:
       name: "Reachy Mini Awake binary sensor"
       description: >
-        The binary_sensor created by the REST block. Defaults to the
-        entity name from the blueprint copy-paste YAML.
+        The binary_sensor created by the integration. Defaults to the
+        entity name the integration ships with.
       default: binary_sensor.reachy_mini_awake
       selector:
         entity:
           domain: binary_sensor
-    motor_mode_entity:
-      name: "(Optional) Motor mode sensor"
-      description: >
-        If supplied, the motor mode is exposed as `motor_mode` in
-        the actions sequence below.
-      default: sensor.reachy_mini_motor_mode
-      selector:
-        entity:
-          domain: sensor
     actions:
       name: "Actions"
       description: >
         Run every time the robot wakes. Typical pick: a `notify.*`
-        service or a `light.turn_on`.
+        service or a `light.turn_on`. The `select.reachy_mini_motor_mode`
+        entity is available in the action via `states('select.reachy_mini_motor_mode')`
+        if you want to include it in the message.
       selector:
         action: {}
 
 mode: single
-
-variables:
-  motor_mode_entity: !input motor_mode_entity
-  motor_mode: "{{ states(motor_mode_entity) if motor_mode_entity else 'unknown' }}"
 
 trigger:
   - platform: state

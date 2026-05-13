@@ -1,0 +1,70 @@
+blueprint:
+  name: "Reachy Mini: Wake up on arrival or presence"
+  description: >
+    Presses the Reachy Mini wake-up button whenever a chosen entity
+    transitions to a target state. The most common use is a
+    `person.*` entity flipping to `home`, but any state-bearing entity
+    works — a motion binary_sensor going `on`, a door_lock going
+    `unlocked`, an input_boolean toggled by another automation, etc.
+
+
+    A safety condition skips the press when the robot is already
+    awake, so the automation can fire freely without disturbing an
+    already-running session.
+
+
+    **Showcases** the `button.reachy_mini_wake_up` and
+    `binary_sensor.reachy_mini_awake` entities created by the Reachy
+    Mini Home Assistant integration.
+  domain: automation
+  author: Pollen Robotics
+  source_url: https://github.com/pollen-robotics/reachy_mini_homeassistant/blob/main/blueprints/automation/reachy_mini/wake_on_presence.yaml
+  input:
+    presence_entity:
+      name: "Presence / trigger entity"
+      description: >
+        The entity whose state change wakes the robot. Typical picks:
+        a person, a motion binary_sensor, a door sensor.
+      selector:
+        entity: {}
+    trigger_state:
+      name: "Target state"
+      description: >
+        Wake the robot when this entity transitions *to* this state.
+        Common values: `home` (person), `on` (binary_sensor), `True`.
+      default: home
+      selector:
+        text: {}
+    awake_entity:
+      name: "Reachy Mini Awake binary sensor"
+      description: >
+        Used as a safety check — skip the wake-up if the robot is
+        already awake.
+      default: binary_sensor.reachy_mini_awake
+      selector:
+        entity:
+          domain: binary_sensor
+    wake_button:
+      name: "Reachy Mini Wake-up button"
+      default: button.reachy_mini_wake_up
+      selector:
+        entity:
+          domain: button
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input presence_entity
+    to: !input trigger_state
+
+condition:
+  - condition: state
+    entity_id: !input awake_entity
+    state: "off"
+
+action:
+  - service: button.press
+    target:
+      entity_id: !input wake_button

@@ -1,0 +1,87 @@
+blueprint:
+  name: "Reachy Mini: Day / night speaker volume"
+  description: >
+    At the configured night time, drops the Reachy Mini's speaker
+    volume to a quiet level. At the configured day time, raises it
+    back to a normal level. One automation, two scheduled triggers,
+    one volume slider.
+
+
+    Useful for keeping the robot polite at night even if an app
+    decides to autonomously chat or play music — and for not having
+    to remember to turn it back up in the morning.
+
+
+    **Showcases** the `number.reachy_mini_speaker_volume` slider
+    created by the Reachy Mini Home Assistant integration.
+  domain: automation
+  author: Pollen Robotics
+  source_url: https://github.com/pollen-robotics/reachy_mini_homeassistant/blob/main/blueprints/automation/reachy_mini/night_volume.yaml
+  input:
+    night_time:
+      name: "Night time (volume goes down)"
+      default: "22:00:00"
+      selector:
+        time: {}
+    night_volume:
+      name: "Night volume (%)"
+      description: "Volume level applied at the night time."
+      default: 20
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    day_time:
+      name: "Day time (volume goes back up)"
+      default: "08:00:00"
+      selector:
+        time: {}
+    day_volume:
+      name: "Day volume (%)"
+      description: "Volume level applied at the day time."
+      default: 60
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    speaker_entity:
+      name: "Reachy Mini Speaker volume slider"
+      default: number.reachy_mini_speaker_volume
+      selector:
+        entity:
+          domain: number
+
+mode: single
+
+trigger:
+  - platform: time
+    at: !input night_time
+    id: night
+  - platform: time
+    at: !input day_time
+    id: day
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: night
+        sequence:
+          - service: number.set_value
+            target:
+              entity_id: !input speaker_entity
+            data:
+              value: !input night_volume
+      - conditions:
+          - condition: trigger
+            id: day
+        sequence:
+          - service: number.set_value
+            target:
+              entity_id: !input speaker_entity
+            data:
+              value: !input day_volume

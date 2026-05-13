@@ -108,20 +108,19 @@ additive extensions if anyone wants them:
 ## Blueprints
 
 Six ready-made automation blueprints ship in the
-`blueprints/automation/reachy_mini/` folder of this repo. Once you have
-the integration set up, import them by clicking the badge in each row:
+`blueprints/automation/reachy_mini/` folder of this repo. Each pre-fills
+its entity dropdowns with the names this integration creates — you
+typically only have to pick the action targets. Click an import badge,
+then *Import* and *Create automation* in HA.
 
-| Blueprint | Import |
-|---|---|
-| Notify when robot wakes up | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fnotify_on_wake.yaml) |
-| Dim lights when someone speaks to it | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fdim_lights_on_speech.yaml) |
-| Activate a scene when a specific app launches | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fmy.home-assistant.io%2Fredirect%2Fblueprint_import%2F%3Fblueprint_url%3Dhttps%253A%252F%252Fraw.githubusercontent.com%252Fpollen-robotics%252Freachy_mini_homeassistant%252Fmain%252Fblueprints%252Fautomation%252Freachy_mini%252Fscene_on_app_launch.yaml) |
-| Run an action with the speaker's direction | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Frun_with_doa.yaml) |
-| Notify when the IMU runs hot | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fimu_thermal_warning.yaml) |
-| Daily status report | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fdaily_status_report.yaml) |
-
-Each blueprint pre-fills its entity dropdowns with the names produced by
-this integration; you only have to pick the action targets.
+| Blueprint | What it does | Showcases | Import |
+|---|---|---|---|
+| **Notify when robot wakes up** | Fires the chosen actions on every sleep → awake transition. | `binary_sensor.reachy_mini_awake` | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fnotify_on_wake.yaml) |
+| **Dim lights when someone speaks to it** | Lights fade down when the mic array detects sustained speech — for a "conversation mode" atmosphere. | `binary_sensor.reachy_mini_speech_detected` | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fdim_lights_on_speech.yaml) |
+| **Activate a scene when an app launches** | When `sensor.reachy_mini_active_app` becomes the chosen app, run a scene. | `sensor.reachy_mini_active_app` | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fscene_on_app_launch.yaml) |
+| **Run an action with the speaker's direction** | Exposes `doa_deg` (0 = left, 90 = front, 180 = right) to the chosen actions on speech detect — for steering a smart light, panning a camera, etc. | `sensor.reachy_mini_voice_direction` + speech sensor | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Frun_with_doa.yaml) |
+| **Wake up on arrival or presence** | When a person, motion sensor, door sensor (etc.) changes to a chosen state, press the wake-up button — only if the robot isn't already awake. | `button.reachy_mini_wake_up` + awake binary sensor | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fwake_on_presence.yaml) |
+| **Day / night speaker volume** | Two scheduled times → set `number.reachy_mini_speaker_volume` to different day and night levels automatically. | `number.reachy_mini_speaker_volume` slider | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fnight_volume.yaml) |
 
 ## Troubleshooting
 
