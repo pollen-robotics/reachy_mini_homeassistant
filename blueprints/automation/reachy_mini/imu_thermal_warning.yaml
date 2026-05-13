@@ -1,0 +1,68 @@
+blueprint:
+  name: "Reachy Mini: Notify when the IMU runs hot"
+  description: >
+    Fires when the Reachy Mini's IMU temperature stays above the chosen
+    threshold for a sustained period. The IMU is a reasonable proxy for
+    "is the chassis warming up?" — not the hottest component in the
+    robot, but the only temperature sensor currently exposed.
+
+
+    **Wireless variant only** — the Lite has no BMI088 IMU.
+
+
+    **Requires** `sensor.reachy_mini_imu_temperature` from the Reachy
+    Mini `rest:` block.
+  domain: automation
+  author: Pollen Robotics
+  source_url: https://github.com/pollen-robotics/reachy_mini_homeassistant/blob/main/blueprints/automation/reachy_mini/imu_thermal_warning.yaml
+  input:
+    imu_temp_entity:
+      name: "IMU temperature sensor"
+      default: sensor.reachy_mini_imu_temperature
+      selector:
+        entity:
+          domain: sensor
+    threshold_celsius:
+      name: "Warning threshold (°C)"
+      default: 60
+      selector:
+        number:
+          min: 30
+          max: 90
+          step: 1
+          unit_of_measurement: "°C"
+    sustained_for_seconds:
+      name: "Sustained for"
+      description: >
+        How long the threshold must be exceeded before triggering.
+        Filters out brief spikes from gradient sun on the chassis,
+        startup transients, etc.
+      default: 60
+      selector:
+        number:
+          min: 0
+          max: 600
+          step: 10
+          unit_of_measurement: "s"
+    actions:
+      name: "Actions when overheating"
+      description: >
+        The current temperature is available as `imu_temp` in the
+        chosen actions.
+      selector:
+        action: {}
+
+mode: single
+
+variables:
+  imu_temp_entity: !input imu_temp_entity
+  imu_temp: "{{ states(imu_temp_entity) }}"
+
+trigger:
+  - platform: numeric_state
+    entity_id: !input imu_temp_entity
+    above: !input threshold_celsius
+    for:
+      seconds: !input sustained_for_seconds
+
+action: !input actions

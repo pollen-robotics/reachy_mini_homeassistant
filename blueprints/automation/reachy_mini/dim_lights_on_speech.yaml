@@ -1,0 +1,72 @@
+blueprint:
+  name: "Reachy Mini: Dim lights when someone speaks to it"
+  description: >
+    Dims selected lights when the Reachy Mini's microphone-array VAD
+    detects speech for a configurable debounce period. Great for a
+    "conversation mode" — the room visually settles when the robot is
+    listening.
+
+
+    **Requires** `binary_sensor.reachy_mini_speech_detected` from the
+    Reachy Mini `rest:` block.
+  domain: automation
+  author: Pollen Robotics
+  source_url: https://github.com/pollen-robotics/reachy_mini_homeassistant/blob/main/blueprints/automation/reachy_mini/dim_lights_on_speech.yaml
+  input:
+    speech_entity:
+      name: "Speech-detected binary sensor"
+      default: binary_sensor.reachy_mini_speech_detected
+      selector:
+        entity:
+          domain: binary_sensor
+    light_targets:
+      name: "Lights to dim"
+      selector:
+        target:
+          entity:
+            domain: light
+    brightness_pct:
+      name: "Brightness while speaking (%)"
+      default: 25
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+    transition:
+      name: "Fade duration (seconds)"
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 10
+          step: 0.5
+          unit_of_measurement: "s"
+    debounce_seconds:
+      name: "Speech debounce"
+      description: >
+        How long speech must be sustained before dimming. Filters out
+        short noises like a cough or door slam.
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 10
+          step: 0.5
+          unit_of_measurement: "s"
+
+mode: single
+
+trigger:
+  - platform: state
+    entity_id: !input speech_entity
+    to: "on"
+    for:
+      seconds: !input debounce_seconds
+
+action:
+  - service: light.turn_on
+    target: !input light_targets
+    data:
+      brightness_pct: !input brightness_pct
+      transition: !input transition

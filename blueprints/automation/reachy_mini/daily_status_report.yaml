@@ -1,0 +1,68 @@
+blueprint:
+  name: "Reachy Mini: Daily status report"
+  description: >
+    Runs the chosen actions at a configurable time each day, with the
+    robot's current CPU, memory, and uptime available as template
+    variables `cpu_pct`, `mem_pct`, and `uptime_hours`.
+
+
+    Example action — send a persistent notification:
+
+
+        service: notify.persistent_notification
+        data:
+          title: "Reachy Mini status"
+          message: >
+            CPU {{ cpu_pct }}%, Memory {{ mem_pct }}%,
+            up for {{ uptime_hours }} h
+
+
+    **Requires** `sensor.reachy_mini_cpu`, `sensor.reachy_mini_memory`,
+    and `sensor.reachy_mini_uptime` from the Reachy Mini `rest:` block.
+  domain: automation
+  author: Pollen Robotics
+  source_url: https://github.com/pollen-robotics/reachy_mini_homeassistant/blob/main/blueprints/automation/reachy_mini/daily_status_report.yaml
+  input:
+    report_time:
+      name: "Report time"
+      default: "08:00:00"
+      selector:
+        time: {}
+    cpu_entity:
+      name: "CPU sensor"
+      default: sensor.reachy_mini_cpu
+      selector:
+        entity:
+          domain: sensor
+    mem_entity:
+      name: "Memory sensor"
+      default: sensor.reachy_mini_memory
+      selector:
+        entity:
+          domain: sensor
+    uptime_entity:
+      name: "Uptime sensor"
+      default: sensor.reachy_mini_uptime
+      selector:
+        entity:
+          domain: sensor
+    actions:
+      name: "Actions to run for the report"
+      selector:
+        action: {}
+
+mode: single
+
+variables:
+  cpu_entity: !input cpu_entity
+  mem_entity: !input mem_entity
+  uptime_entity: !input uptime_entity
+  cpu_pct: "{{ states(cpu_entity) }}"
+  mem_pct: "{{ states(mem_entity) }}"
+  uptime_hours: "{{ (states(uptime_entity) | float(0) / 3600) | round(1) }}"
+
+trigger:
+  - platform: time
+    at: !input report_time
+
+action: !input actions

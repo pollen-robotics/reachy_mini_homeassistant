@@ -1,0 +1,19 @@
+{
+  "domain": "reachy_mini",
+  "name": "Reachy Mini",
+  "version": "0.1.0",
+  "documentation": "https://github.com/pollen-robotics/reachy_mini_homeassistant",
+  "issue_tracker": "https://github.com/pollen-robotics/reachy_mini_homeassistant/issues",
+  "codeowners": ["@pollen-robotics"],
+  "config_flow": true,
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "requirements": [],
+  "dependencies": [],
+  "zeroconf": [
+    {
+      "type": "_reachy-mini._tcp.local.",
+      "properties": { "model": "ReachyMini" }
+    }
+  ]
+}

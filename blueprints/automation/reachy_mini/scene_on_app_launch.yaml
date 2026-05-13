@@ -1,0 +1,56 @@
+blueprint:
+  name: "Reachy Mini: Activate a scene when a specific app launches"
+  description: >
+    When the Reachy Mini's `sensor.reachy_mini_active_app` changes to
+    your chosen app name, activate a Home Assistant scene. Useful for
+    syncing the room with what the robot is doing — disco lights on
+    the radio app, focus mode on a coding assistant, etc.
+
+
+    **Requires** `sensor.reachy_mini_active_app` from the Reachy Mini
+    `rest:` block.
+  domain: automation
+  author: Pollen Robotics
+  source_url: https://github.com/pollen-robotics/reachy_mini_homeassistant/blob/main/blueprints/automation/reachy_mini/scene_on_app_launch.yaml
+  input:
+    active_app_entity:
+      name: "Reachy Mini Active App sensor"
+      default: sensor.reachy_mini_active_app
+      selector:
+        entity:
+          domain: sensor
+    app_name:
+      name: "App name to react to"
+      description: >
+        Exact app name as reported by the daemon, e.g. `reachy_mini_radio`
+        or `reachy_mini_conversation_app`. Case-sensitive.
+      selector:
+        text: {}
+    scene_target:
+      name: "Scene to activate"
+      selector:
+        entity:
+          domain: scene
+    transition:
+      name: "Transition (seconds)"
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 30
+          step: 0.5
+          unit_of_measurement: "s"
+
+mode: single
+
+trigger:
+  - platform: state
+    entity_id: !input active_app_entity
+    to: !input app_name
+
+action:
+  - service: scene.turn_on
+    target:
+      entity_id: !input scene_target
+    data:
+      transition: !input transition

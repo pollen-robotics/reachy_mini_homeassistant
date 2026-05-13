@@ -1,0 +1,57 @@
+blueprint:
+  name: "Reachy Mini: Run an action with the speaker's direction"
+  description: >
+    Fires when the Reachy Mini's mic array detects speech. The speaker's
+    direction of arrival (in degrees, 0 = left of robot, 90 = front,
+    180 = right) is exposed as the template variable `doa_deg` and is
+    available inside the chosen action sequence.
+
+
+    Useful for steering a smart light or panning a camera toward
+    whoever just spoke. Example action — color-pan a smart light:
+
+
+        service: light.turn_on
+        target: { entity_id: light.spotlight }
+        data:
+          hs_color:
+            - "{{ doa_deg }}"
+            - 100
+
+
+    **Requires** `binary_sensor.reachy_mini_speech_detected` and
+    `sensor.reachy_mini_voice_direction` from the Reachy Mini
+    `rest:` block.
+  domain: automation
+  author: Pollen Robotics
+  source_url: https://github.com/pollen-robotics/reachy_mini_homeassistant/blob/main/blueprints/automation/reachy_mini/run_with_doa.yaml
+  input:
+    speech_entity:
+      name: "Speech-detected binary sensor"
+      default: binary_sensor.reachy_mini_speech_detected
+      selector:
+        entity:
+          domain: binary_sensor
+    doa_angle_entity:
+      name: "Voice-direction sensor (radians)"
+      default: sensor.reachy_mini_voice_direction
+      selector:
+        entity:
+          domain: sensor
+    actions:
+      name: "Actions (with `doa_deg` variable in scope)"
+      selector:
+        action: {}
+
+mode: single
+
+variables:
+  doa_angle_entity: !input doa_angle_entity
+  doa_deg: "{{ (states(doa_angle_entity) | float(0) * 57.2958) | round(1) }}"
+
+trigger:
+  - platform: state
+    entity_id: !input speech_entity
+    to: "on"
+
+action: !input actions

@@ -1,0 +1,48 @@
+{
+  "config": {
+    "flow_title": "{name} ({host})",
+    "step": {
+      "user": {
+        "title": "Add Reachy Mini",
+        "description": "Connect to a Reachy Mini daemon by hostname or IP. The default `reachy-mini.local` works on most LANs with mDNS resolution.",
+        "data": {
+          "host": "Host or IP",
+          "port": "Daemon port"
+        }
+      },
+      "confirm": {
+        "title": "Add discovered Reachy Mini?",
+        "description": "Add the Reachy Mini at `{host}` (unit `{unit_id}`) to Home Assistant?"
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the daemon. Verify the robot is on the network and the daemon is running."
+    },
+    "abort": {
+      "already_configured": "This Reachy Mini is already configured.",
+      "cannot_connect": "Could not reach the daemon.",
+      "no_unit_id": "Discovered Reachy Mini is missing the unit_id TXT record. Upgrade the Reachy Mini daemon to a release with Home Assistant support."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "active_app": { "name": "Active app" },
+      "active_app_transport": { "name": "Active app transport" },
+      "motor_mode": { "name": "Motor mode" },
+      "cpu": { "name": "CPU" },
+      "memory": { "name": "Memory" },
+      "speaker_volume": { "name": "Speaker volume" },
+      "mic_volume": { "name": "Microphone volume" },
+      "imu_temp": { "name": "IMU temperature" },
+      "imu_pitch": { "name": "Pitch" },
+      "imu_roll": { "name": "Roll" },
+      "voice_direction": { "name": "Voice direction" },
+      "uptime": { "name": "Uptime" }
+    },
+    "binary_sensor": {
+      "awake": { "name": "Awake" },
+      "webrtc_active": { "name": "WebRTC active" },
+      "speech_detected": { "name": "Speech detected" }
+    }
+  }
+}
