@@ -1,16 +1,25 @@
 """DataUpdateCoordinator for Reachy Mini.
 
-Polls the daemon's `/api/homeassistant/state` endpoint on a fixed
-schedule and caches the latest payload for all entity platforms.
+Polls the SDK's primitive snapshot endpoint
+(``GET /api/daemon/snapshot``) and derives the consumer-side fields
+that HA's entity platforms read.
 
-Failure handling: a single failed poll surfaces as `UpdateFailed` so
-all entities go `unavailable`. The next successful poll recovers them.
-This matches the rest of HA's polled-integration ecosystem.
+The SDK exposes only primitive values (motor_mode, imu_quaternion,
+app_lock_state, …). All HA-shaped semantics live here:
+
+- ``awake``  = motor_mode is "enabled" or "gravity_compensation"
+- ``imu_pitch_deg``, ``imu_roll_deg``  = euler conversion of quaternion
+- ``active_app``, ``active_app_transport``  = derived from app_lock_*
+- ``webrtc_active``  = app_lock_state == "remote_session"
+
+Failure handling: a single failed poll surfaces as ``UpdateFailed`` so
+all entities go ``unavailable``. The next successful poll recovers them.
 """
 
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any
 
 import aiohttp
@@ -26,14 +35,80 @@ from .const import (
     DEFAULT_TIMEOUT,
     DOMAIN,
     ENDPOINT_PATH,
-    SUPPORTED_SCHEMA_VERSIONS,
+    EXPECTED_SDK_KEYS,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
+def _quat_to_pitch_roll_deg(quat: list[float]) -> tuple[float, float]:
+    """Convert a (w, x, y, z) quaternion to pitch and roll, in degrees.
+
+    Yaw is intentionally omitted — drifts on a six-axis IMU without a
+    magnetometer, and pitch/roll are the only orientation signals a
+    typical HA user cares about ("is the robot tipped over?").
+    """
+    w, x, y, z = quat
+    sinr_cosp = 2.0 * (w * x + y * z)
+    cosr_cosp = 1.0 - 2.0 * (x * x + y * y)
+    roll = math.degrees(math.atan2(sinr_cosp, cosr_cosp))
+    sinp = max(-1.0, min(1.0, 2.0 * (w * y - z * x)))
+    pitch = math.degrees(math.asin(sinp))
+    return pitch, roll
+
+
+def _derive_state(raw: dict[str, Any]) -> dict[str, Any]:
+    """Apply HA-shaped derivations on top of the raw SDK snapshot.
+
+    Returns a new dict containing both the raw fields *and* the
+    derived ones — entity platforms look up by key without needing to
+    know which is which.
+    """
+    out: dict[str, Any] = dict(raw)
+
+    motor_mode = raw.get("motor_mode")
+    if motor_mode is not None:
+        out["awake"] = motor_mode in ("enabled", "gravity_compensation")
+    else:
+        out["awake"] = None
+
+    quat = raw.get("imu_quaternion")
+    if isinstance(quat, list) and len(quat) == 4:
+        try:
+            pitch, roll = _quat_to_pitch_roll_deg(quat)
+            out["imu_pitch_deg"] = round(pitch, 2)
+            out["imu_roll_deg"] = round(roll, 2)
+        except (TypeError, ValueError):
+            out["imu_pitch_deg"] = None
+            out["imu_roll_deg"] = None
+    else:
+        out["imu_pitch_deg"] = None
+        out["imu_roll_deg"] = None
+
+    lock_state = raw.get("app_lock_state")
+    lock_holder = raw.get("app_lock_holder")
+    if lock_state == "local_app":
+        out["active_app"] = lock_holder
+        out["active_app_transport"] = "local"
+        out["webrtc_active"] = False
+    elif lock_state == "remote_session":
+        out["active_app"] = lock_holder
+        out["active_app_transport"] = "webrtc"
+        out["webrtc_active"] = True
+    elif lock_state == "free":
+        out["active_app"] = None
+        out["active_app_transport"] = None
+        out["webrtc_active"] = False
+    else:
+        out["active_app"] = None
+        out["active_app_transport"] = None
+        out["webrtc_active"] = None
+
+    return out
+
+
 class ReachyMiniCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """Polls `/api/homeassistant/state` every :data:`DEFAULT_SCAN_INTERVAL`."""
+    """Polls the SDK's snapshot endpoint and derives HA-shaped fields."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Bind the coordinator to a config entry."""
@@ -45,7 +120,7 @@ class ReachyMiniCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self._entry = entry
         self._session = async_get_clientsession(hass)
-        self._unknown_schema_logged = False
+        self._missing_keys_logged = False
 
     @property
     def host(self) -> str:
@@ -59,29 +134,30 @@ class ReachyMiniCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     @property
     def url(self) -> str:
-        """Fully-qualified URL of the HA aggregator endpoint."""
+        """Fully-qualified URL of the SDK snapshot endpoint."""
         return f"http://{self.host}:{self.port}{ENDPOINT_PATH}"
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch and return the latest state snapshot."""
+        """Fetch the raw snapshot and apply HA-shaped derivations."""
         try:
             async with self._session.get(
                 self.url,
                 timeout=aiohttp.ClientTimeout(total=DEFAULT_TIMEOUT),
             ) as resp:
                 resp.raise_for_status()
-                payload: dict[str, Any] = await resp.json()
+                raw: dict[str, Any] = await resp.json()
         except (aiohttp.ClientError, TimeoutError) as err:
             raise UpdateFailed(f"Cannot reach Reachy Mini at {self.url}: {err}") from err
 
-        schema = payload.get("schema_version")
-        if schema not in SUPPORTED_SCHEMA_VERSIONS and not self._unknown_schema_logged:
+        # Detect SDK / integration drift once per coordinator lifetime.
+        missing = EXPECTED_SDK_KEYS - raw.keys()
+        if missing and not self._missing_keys_logged:
             _LOGGER.warning(
-                "Reachy Mini reported unknown schema_version=%s; "
-                "some fields may be missing or renamed. "
-                "Consider upgrading the integration.",
-                schema,
+                "Reachy Mini snapshot is missing expected keys %s — "
+                "the daemon and integration may be out of sync. "
+                "Consider upgrading both.",
+                sorted(missing),
             )
-            # Log once per coordinator lifecycle to avoid spamming.
-            self._unknown_schema_logged = True
-        return payload
+            self._missing_keys_logged = True
+
+        return _derive_state(raw)

@@ -184,7 +184,11 @@ class ReachyMiniConfigFlow(ConfigFlow, domain=DOMAIN):
                 if resp.status != 200:
                     return None
                 payload: dict[str, Any] = await resp.json()
-                if "schema_version" not in payload:
+                # `model` is always populated by the SDK snapshot
+                # endpoint — a sanity check that we're actually
+                # talking to a Reachy Mini daemon and not a random
+                # HTTP server that happens to return 200.
+                if payload.get("model") != "ReachyMini":
                     return None
                 return payload
         except (aiohttp.ClientError, TimeoutError, ValueError):
