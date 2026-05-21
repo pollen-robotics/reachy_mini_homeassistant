@@ -14,7 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_UNIT_ID, DOMAIN
+from .const import CONF_MODEL, CONF_UNIT_ID, MODEL_DEFAULT, DOMAIN
 from .coordinator import ReachyMiniCoordinator
 
 
@@ -24,13 +24,15 @@ def build_device_info(
     """Construct the DeviceInfo shown under Settings → Devices."""
     payload: dict[str, Any] = coordinator.data or {}
     unit_id = entry.data.get(CONF_UNIT_ID) or entry.entry_id
-    # model + manufacturer are constants for this integration —
-    # there's no per-device variation. sw_version comes from the
-    # daemon's /api/daemon/status `version` field.
+    # Variant ("Reachy Mini Wireless" / "Reachy Mini Lite") is captured
+    # at config-flow time — from mDNS TXT on discovery or from the
+    # daemon-status `wireless_version` flag on manual setup. Falls back
+    # to the generic name for legacy entries created before this field
+    # was stored. sw_version is the daemon's `/api/daemon/status::version`.
     return DeviceInfo(
         identifiers={(DOMAIN, unit_id)},
         manufacturer="Pollen Robotics",
-        model="Reachy Mini",
+        model=entry.data.get(CONF_MODEL) or MODEL_DEFAULT,
         name=f"Reachy Mini ({unit_id[:4]})" if len(unit_id) >= 4 else "Reachy Mini",
         sw_version=payload.get("firmware_version"),
         configuration_url=f"http://{coordinator.host}:{coordinator.port}/",

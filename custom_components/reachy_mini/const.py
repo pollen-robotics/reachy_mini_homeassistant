@@ -52,5 +52,12 @@ TXT_MANUFACTURER = "manufacturer"
 TXT_VERSION = "version"
 TXT_ROBOT_NAME = "robot_name"
 
+# Variant model strings — exactly mirror the values the SDK advertises
+# in its mDNS TXT `model` record (see reachy_mini/utils/discovery.py).
+MODEL_WIRELESS = "Reachy Mini Wireless"
+MODEL_LITE = "Reachy Mini Lite"
+MODEL_DEFAULT = "Reachy Mini"
+
 # Config entry data keys.
 CONF_UNIT_ID = "unit_id"
+CONF_MODEL = "model"

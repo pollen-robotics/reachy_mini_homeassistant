@@ -30,16 +30,30 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
+    CONF_MODEL,
     CONF_UNIT_ID,
     DEFAULT_PORT,
     DEFAULT_TIMEOUT,
     DOMAIN,
     ENDPOINT_STATUS,
+    MODEL_DEFAULT,
+    MODEL_LITE,
+    MODEL_WIRELESS,
+    TXT_MODEL,
     TXT_ROBOT_NAME,
     TXT_UNIT_ID,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _model_from_wireless_flag(wireless: Any) -> str:
+    """Map daemon-status ``wireless_version`` to a human variant string."""
+    if wireless is True:
+        return MODEL_WIRELESS
+    if wireless is False:
+        return MODEL_LITE
+    return MODEL_DEFAULT
 
 
 class ReachyMiniConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -53,6 +67,7 @@ class ReachyMiniConfigFlow(ConfigFlow, domain=DOMAIN):
         self._discovered_port: int = DEFAULT_PORT
         self._discovered_unit_id: str | None = None
         self._discovered_robot_name: str | None = None
+        self._discovered_model: str = MODEL_DEFAULT
 
     # ------------------------------------------------------------------
     # Zeroconf discovery
@@ -74,15 +89,18 @@ class ReachyMiniConfigFlow(ConfigFlow, domain=DOMAIN):
             _LOGGER.debug("Discovered Reachy Mini at %s without unit_id; aborting", host)
             return self.async_abort(reason="no_unit_id")
 
+        model = props.get(TXT_MODEL) or MODEL_DEFAULT
+
         await self.async_set_unique_id(unit_id)
         self._abort_if_unique_id_configured(
-            updates={CONF_HOST: host, CONF_PORT: port},
+            updates={CONF_HOST: host, CONF_PORT: port, CONF_MODEL: model},
         )
 
         self._discovered_host = host
         self._discovered_port = port
         self._discovered_unit_id = unit_id
         self._discovered_robot_name = props.get(TXT_ROBOT_NAME) or "reachy_mini"
+        self._discovered_model = model
 
         # The placeholders show up in the "Discovered" card title.
         self.context["title_placeholders"] = {
@@ -113,6 +131,7 @@ class ReachyMiniConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_HOST: self._discovered_host,
                 CONF_PORT: self._discovered_port,
                 CONF_UNIT_ID: self._discovered_unit_id,
+                CONF_MODEL: self._discovered_model,
             },
         )
 
@@ -138,10 +157,13 @@ class ReachyMiniConfigFlow(ConfigFlow, domain=DOMAIN):
                 # unique_id (same value, different name across the
                 # daemon's two surfaces).
                 unit_id = payload.get("hardware_id")
+                # The TXT advertises a variant model string; the REST
+                # status reports the same variant as a boolean. Map it.
+                model = _model_from_wireless_flag(payload.get("wireless_version"))
                 if unit_id:
                     await self.async_set_unique_id(unit_id)
                     self._abort_if_unique_id_configured(
-                        updates={CONF_HOST: host, CONF_PORT: port},
+                        updates={CONF_HOST: host, CONF_PORT: port, CONF_MODEL: model},
                     )
                 # If the daemon doesn't return a unit_id (no robot
                 # attached / freshly booted), we still allow the add
@@ -153,7 +175,12 @@ class ReachyMiniConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
                 return self.async_create_entry(
                     title=title,
-                    data={CONF_HOST: host, CONF_PORT: port, CONF_UNIT_ID: unit_id},
+                    data={
+                        CONF_HOST: host,
+                        CONF_PORT: port,
+                        CONF_UNIT_ID: unit_id,
+                        CONF_MODEL: model,
+                    },
                 )
 
         schema = vol.Schema(
