@@ -48,7 +48,7 @@ extra protocols, no broker, no auth.
 
 1. Make sure your Reachy Mini daemon is running on the **same LAN**.
    For *auto-discovery* you need a daemon that advertises
-   `model=ReachyMini` in its mDNS TXT record — that's the
+   `manufacturer=Pollen Robotics` in its mDNS TXT record — that's the
    [`feat/homeassistant` branch](https://github.com/pollen-robotics/reachy_mini/tree/feat/homeassistant)
    or any release that includes it. For *manual setup* any current
    daemon will do (the integration probes `/api/daemon/status`).
@@ -141,8 +141,8 @@ then *Import* and *Create automation* in HA.
 **HA doesn't show the "Discovered" card.**
 
 - Your daemon is running but on an older version that doesn't advertise
-  the `model=ReachyMini` TXT record. Upgrade to the SDK build that
-  includes the `feat/homeassistant` work.
+  the `manufacturer=Pollen Robotics` TXT record. Upgrade to the SDK build
+  that includes the `feat/homeassistant` work.
 - mDNS isn't traversing your network. Confirm with `avahi-browse -ar`
   (Linux) or `dns-sd -B _reachy-mini._tcp` (macOS).
 - HA's zeroconf component is disabled. Re-enable via Settings →

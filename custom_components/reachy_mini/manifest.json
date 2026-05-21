@@ -13,7 +13,7 @@
   "zeroconf": [
     {
       "type": "_reachy-mini._tcp.local.",
-      "properties": { "model": "ReachyMini" }
+      "properties": { "manufacturer": "Pollen Robotics" }
     }
   ]
 }

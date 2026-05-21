@@ -5,7 +5,8 @@ Its only job is to:
 
 1. Be claimed by HA when the daemon's `_reachy-mini._tcp.local.` mDNS
    record appears on the LAN — the matching is declared in
-   `manifest.json` and filtered by the `model=ReachyMini` TXT property.
+   `manifest.json` and filtered by the `manufacturer=Pollen Robotics`
+   TXT property (variant-agnostic across Wireless and Lite).
 2. Drive a :class:`DataUpdateCoordinator` that polls several daemon
    endpoints in parallel (`/api/daemon/status`,
    `/api/daemon/robot-app-lock-status`, `/api/state/doa`,
