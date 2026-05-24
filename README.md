@@ -10,11 +10,12 @@ instance, polls the robot's daemon every 30 s, and exposes:
   direction (microphone-array DoA),
 - **binary sensors** for awake state, WebRTC session activity, and
   speech detection,
-- a writable **select** for motor mode (enabled / disabled /
-  gravity compensation),
+- writable **selects** for motor mode (enabled / disabled /
+  gravity compensation), emotion, and dance,
 - writable **number sliders** for speaker and microphone volume,
 - one-shot action **buttons** for wake up, go to sleep, stop/restart
-  the running app, play a test sound, and restart the daemon.
+  the running app, play a test sound, restart the daemon, play
+  emotion, and play dance.
 
 Auto-discovery uses the `_reachy-mini._tcp.local.` mDNS advertisement
 the daemon ships out of the box. Polling fans out to several of the
@@ -86,6 +87,8 @@ its stable `unit_id` (a hash of the audio device serial). Underneath:
 | Entity | Options | Notes |
 |---|---|---|
 | Motor mode | `enabled` / `disabled` / `gravity_compensation` | Picking an option POSTs to `/api/motors/set_mode/{mode}`. Use `disabled` as a soft E-stop (motors release torque). |
+| Emotion | One entry per move in the emotions library | Stores the chosen emotion name; does not play it. Use the *Play emotion* button (or the `reachy_mini.play_recorded_move` service) to trigger playback. |
+| Dance | One entry per move in the dances library | Stores the chosen dance name; does not play it. Use the *Play dance* button (or the `reachy_mini.play_recorded_move` service) to trigger playback. |
 
 ### Numbers (controllable sliders)
 
@@ -108,6 +111,26 @@ the value actually applied.
 | Restart current app | `POST /api/apps/restart-current-app` | Stop + start the current app — handy if it got stuck. |
 | Play test sound | `POST /api/volume/test-sound` | Plays `impatient1.wav` — quick speaker check. |
 | Restart daemon | `POST /api/daemon/restart` | Soft restart of the daemon process. Use sparingly. |
+| Play emotion | `POST /api/move/play/recorded-move-dataset/{dataset}/{move}` | Plays the emotion currently selected in the *Emotion* select entity. |
+| Play dance | `POST /api/move/play/recorded-move-dataset/{dataset}/{move}` | Plays the dance currently selected in the *Dance* select entity. |
+
+### Recorded moves (emotions and dances)
+
+The integration picks up the daemon's two preloaded move libraries
+(`pollen-robotics/reachy-mini-emotions-library` and
+`pollen-robotics/reachy-mini-dances-library`) at setup. For each
+populated library you get:
+
+- a select entity (`Emotion` / `Dance`) listing every move in the
+  library — picking does not play; it just stores the choice;
+- a button entity (`Play emotion` / `Play dance`) that plays whatever
+  is selected.
+
+For automations and blueprints there's also a global service action,
+`reachy_mini.play_recorded_move`, which takes a target device, a
+`dataset` (HF repo path) and a `move` (string). The dataset can be one
+of the bundled libraries or any custom HF dataset the daemon has
+cached — the daemon validates unknown datasets.
 
 ### Not yet exposed
 
