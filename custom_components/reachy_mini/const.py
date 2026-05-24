@@ -61,3 +61,19 @@ MODEL_DEFAULT = "Reachy Mini"
 # Config entry data keys.
 CONF_UNIT_ID = "unit_id"
 CONF_MODEL = "model"
+
+# Recorded-move datasets the daemon preloads at startup. Mirrors
+# DEFAULT_DATASETS in reachy_mini/motion/recorded_move.py on the SDK
+# side. Add new entries here when the SDK ships a third library.
+EMOTIONS_DATASET = "pollen-robotics/reachy-mini-emotions-library"
+DANCES_DATASET = "pollen-robotics/reachy-mini-dances-library"
+RECORDED_MOVE_DATASETS: tuple[str, ...] = (EMOTIONS_DATASET, DANCES_DATASET)
+
+# Move catalog + playback endpoints. The dataset segment can contain
+# '/' (HF repo paths like "pollen-robotics/...") — both endpoints use
+# FastAPI :path matching on the daemon side.
+ENDPOINT_MOVE_LIST = "/api/move/recorded-move-datasets/list/{dataset}"
+ENDPOINT_MOVE_PLAY = "/api/move/play/recorded-move-dataset/{dataset}/{move}"
+
+# Service action surfaced under Developer Tools → Services.
+SERVICE_PLAY_RECORDED_MOVE = "play_recorded_move"
