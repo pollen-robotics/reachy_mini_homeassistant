@@ -50,6 +50,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # `model` / `manufacturer` / `firmware_version` fields for the
     # device registry.
     await coordinator.async_config_entry_first_refresh()
+    # Pull recorded-move catalogs once. Stable at runtime, so we don't
+    # include them in the per-tick poll. Failures inside are logged but
+    # don't abort setup — the matching entities just won't be created.
+    await coordinator.async_load_move_lists()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
