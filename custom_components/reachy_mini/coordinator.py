@@ -44,9 +44,12 @@ from .const import (
     DOMAIN,
     ENDPOINT_APP_LOCK,
     ENDPOINT_DOA,
+    ENDPOINT_MOVE_LIST,
+    ENDPOINT_MOVE_PLAY,
     ENDPOINT_STATUS,
     ENDPOINT_VOLUME_MIC,
     ENDPOINT_VOLUME_SPEAKER,
+    RECORDED_MOVE_DATASETS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -99,6 +102,15 @@ class ReachyMiniCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self._entry = entry
         self._session = async_get_clientsession(hass)
+        # Recorded-move catalogs. Populated once at setup-time via
+        # async_load_move_lists. Stable at runtime — not in the per-tick
+        # fan-out poll. Keyed by full HF dataset path.
+        self.move_lists: dict[str, list[str]] = {}
+        # User's last pick per dataset. Mutated by the select entities'
+        # async_select_option; read by the matching play buttons.
+        self.selected_move: dict[str, str | None] = {
+            ds: None for ds in RECORDED_MOVE_DATASETS
+        }
 
     @property
     def host(self) -> str:
@@ -217,3 +229,33 @@ class ReachyMiniCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             data["mic_volume"] = v if isinstance(v, int) and v >= 0 else None
 
         return data
+
+    async def async_load_move_lists(self) -> None:
+        """Fetch the move name list for each known dataset (best-effort).
+
+        Called once during ``async_setup_entry`` after the first
+        coordinator refresh. Failures (404 from older daemons, network
+        blip) leave that dataset absent from ``move_lists`` — the
+        matching entities are then simply not created downstream.
+        """
+        for dataset in RECORDED_MOVE_DATASETS:
+            path = ENDPOINT_MOVE_LIST.format(dataset=dataset)
+            result = await self._fetch_json(path)
+            if isinstance(result, list) and result:
+                moves = [str(m) for m in result]
+                self.move_lists[dataset] = moves
+                # Default the selection so a fresh-install button press
+                # works without forcing the user to pick first.
+                if self.selected_move.get(dataset) is None:
+                    self.selected_move[dataset] = moves[0]
+            else:
+                _LOGGER.info(
+                    "Reachy Mini: no recorded moves available for dataset %s",
+                    dataset,
+                )
+
+    async def async_play_recorded_move(self, dataset: str, move: str) -> None:
+        """POST to the play endpoint; re-raises on HTTP failure."""
+        await self.async_post(
+            ENDPOINT_MOVE_PLAY.format(dataset=dataset, move=move)
+        )
