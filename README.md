@@ -286,7 +286,7 @@ additive extensions if anyone wants them:
 
 ## Blueprints
 
-Six ready-made automation blueprints ship in the
+Ready-made automation blueprints ship in the
 `blueprints/automation/reachy_mini/` folder of this repo. Each pre-fills
 its entity dropdowns with the names this integration creates — you
 typically only have to pick the action targets. Click an import badge,
