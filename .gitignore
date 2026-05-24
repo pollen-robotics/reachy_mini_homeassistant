@@ -5,10 +5,12 @@ __pycache__/
 .eggs/
 build/
 dist/
+docs/
 
 .venv/
 venv/
 .env
+.claude/
 
 .idea/
 .vscode/
