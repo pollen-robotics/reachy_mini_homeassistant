@@ -1,0 +1,27 @@
+play_recorded_move:
+  name: Play recorded move
+  description: >-
+    Play a recorded move from a dataset on a Reachy Mini. Pre-validates
+    the move name when the dataset is one the integration knows about;
+    custom Hugging Face dataset paths are accepted and validated by the
+    daemon.
+  target:
+    device:
+      integration: reachy_mini
+  fields:
+    dataset:
+      name: Dataset
+      description: >-
+        Hugging Face dataset path (e.g.
+        pollen-robotics/reachy-mini-emotions-library).
+      required: true
+      example: pollen-robotics/reachy-mini-emotions-library
+      selector:
+        text:
+    move:
+      name: Move
+      description: Move name from the dataset (e.g. happy, sad, macarena).
+      required: true
+      example: happy
+      selector:
+        text:
