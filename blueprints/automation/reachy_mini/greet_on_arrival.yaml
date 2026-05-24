@@ -1,0 +1,99 @@
+blueprint:
+  name: "Reachy Mini: Greet on arrival"
+  description: >
+    When a chosen entity flips to a target state (typically a `person.*`
+    going `home`, a motion sensor going `on`, or a door sensor opening),
+    the robot plays a recorded emotion as a greeting.
+
+
+    Optionally skips when the robot isn't awake — the default keeps
+    things polite by only greeting if the robot is already up. Disable
+    the safety condition to greet regardless (the move will then also
+    wake the robot as a side effect).
+
+
+    **Showcases** the `reachy_mini.play_recorded_move` service action
+    introduced by the integration. Compare with `wake_on_presence.yaml`,
+    which only wakes; this blueprint reacts expressively.
+  domain: automation
+  author: Pollen Robotics
+  source_url: https://github.com/pollen-robotics/reachy_mini_homeassistant/blob/main/blueprints/automation/reachy_mini/greet_on_arrival.yaml
+  input:
+    presence_entity:
+      name: "Presence / arrival entity"
+      description: >
+        The entity whose state change triggers the greeting. Typical
+        picks: a person, a motion binary_sensor, a door sensor.
+      selector:
+        entity: {}
+    trigger_state:
+      name: "Target state"
+      description: >
+        Greet when the entity transitions *to* this state. Common
+        values: `home` (person), `on` (binary_sensor).
+      default: home
+      selector:
+        text: {}
+    reachy_device:
+      name: "Reachy Mini device"
+      description: The Reachy Mini that should perform the greeting.
+      selector:
+        device:
+          integration: reachy_mini
+    dataset:
+      name: "Move dataset"
+      description: >
+        Hugging Face dataset path. The default is the bundled emotions
+        library; swap for a custom HF dataset the daemon has cached.
+      default: pollen-robotics/reachy-mini-emotions-library
+      selector:
+        text: {}
+    move:
+      name: "Move name"
+      description: >
+        Move name from the chosen dataset. See the *Move catalog
+        reference* in the integration README for the bundled options.
+      default: welcoming1
+      selector:
+        text: {}
+    awake_only:
+      name: "Greet only when already awake?"
+      description: >
+        When enabled (default), the automation skips the greeting if
+        the robot is asleep. Disable to greet regardless — the move
+        will then also wake the robot.
+      default: true
+      selector:
+        boolean: {}
+    awake_entity:
+      name: "Reachy Mini Awake binary sensor"
+      description: Used by the safety condition above when enabled.
+      default: binary_sensor.reachy_mini_awake
+      selector:
+        entity:
+          domain: binary_sensor
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input presence_entity
+    to: !input trigger_state
+
+variables:
+  awake_only: !input awake_only
+  awake_entity: !input awake_entity
+
+condition:
+  - condition: template
+    value_template: >
+      {{ not awake_only or is_state(awake_entity, 'on') }}
+
+action:
+  - service: reachy_mini.play_recorded_move
+    target:
+      device_id: !input reachy_device
+    data:
+      dataset: !input dataset
+      move: !input move

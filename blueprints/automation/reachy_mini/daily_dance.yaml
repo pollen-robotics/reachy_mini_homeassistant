@@ -1,0 +1,93 @@
+blueprint:
+  name: "Reachy Mini: Daily dance party"
+  description: >
+    At the chosen time, the robot plays a recorded dance. Optionally
+    constrained to selected weekdays so an office-Friday dance only
+    fires on Fridays.
+
+
+    Works with the bundled dances library or one of the community
+    music dances — the dataset path is configurable.
+
+
+    **Showcases** the `reachy_mini.play_recorded_move` service action
+    and its support for arbitrary Hugging Face dataset paths.
+  domain: automation
+  author: Pollen Robotics
+  source_url: https://github.com/pollen-robotics/reachy_mini_homeassistant/blob/main/blueprints/automation/reachy_mini/daily_dance.yaml
+  input:
+    dance_time:
+      name: "Time to dance"
+      default: "18:00:00"
+      selector:
+        time: {}
+    weekdays:
+      name: "Weekdays"
+      description: Days of the week on which the dance is allowed.
+      default:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+        - sat
+        - sun
+      selector:
+        select:
+          multiple: true
+          options:
+            - value: mon
+              label: Monday
+            - value: tue
+              label: Tuesday
+            - value: wed
+              label: Wednesday
+            - value: thu
+              label: Thursday
+            - value: fri
+              label: Friday
+            - value: sat
+              label: Saturday
+            - value: sun
+              label: Sunday
+    reachy_device:
+      name: "Reachy Mini device"
+      selector:
+        device:
+          integration: reachy_mini
+    dataset:
+      name: "Move dataset"
+      description: >
+        `pollen-robotics/reachy-mini-dances-library` for bundled dances,
+        `Anne-Charlotte/music` for community music dances, or any
+        custom HF dataset the daemon has cached.
+      default: pollen-robotics/reachy-mini-dances-library
+      selector:
+        text: {}
+    move:
+      name: "Dance name"
+      description: >
+        SDK move name (e.g. `groovy_sway_and_roll`,
+        `michael-jackson-thriller`).
+      default: groovy_sway_and_roll
+      selector:
+        text: {}
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: time
+    at: !input dance_time
+
+condition:
+  - condition: time
+    weekday: !input weekdays
+
+action:
+  - service: reachy_mini.play_recorded_move
+    target:
+      device_id: !input reachy_device
+    data:
+      dataset: !input dataset
+      move: !input move

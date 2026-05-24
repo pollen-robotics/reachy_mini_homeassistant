@@ -1,0 +1,71 @@
+blueprint:
+  name: "Reachy Mini: Random emotion on trigger"
+  description: >
+    Picks a random move from a user-curated list and plays it whenever
+    a chosen entity flips to the configured state. Great for "every
+    time the cat-cam detects motion, react with something cheerful" —
+    a different emotion each time keeps the robot from feeling
+    scripted.
+
+
+    The pool is a comma-separated string of SDK move names. Empty
+    entries are ignored; leading/trailing whitespace is trimmed.
+
+
+    **Showcases** the `reachy_mini.play_recorded_move` service action
+    combined with Jinja templating.
+  domain: automation
+  author: Pollen Robotics
+  source_url: https://github.com/pollen-robotics/reachy_mini_homeassistant/blob/main/blueprints/automation/reachy_mini/random_emotion_on_trigger.yaml
+  input:
+    trigger_entity:
+      name: "Trigger entity"
+      selector:
+        entity: {}
+    trigger_state:
+      name: "Target state"
+      description: >
+        Fire when the entity transitions *to* this state. Common values:
+        `on` (binary sensors, buttons), `home` (person).
+      default: "on"
+      selector:
+        text: {}
+    reachy_device:
+      name: "Reachy Mini device"
+      selector:
+        device:
+          integration: reachy_mini
+    dataset:
+      name: "Move dataset"
+      default: pollen-robotics/reachy-mini-emotions-library
+      selector:
+        text: {}
+    move_list:
+      name: "Move pool (comma-separated)"
+      description: >
+        SDK move names to pick from. Example:
+        `cheerful1, laughing1, amazed1, proud1, welcoming1`.
+      default: cheerful1, laughing1, amazed1, proud1, welcoming1
+      selector:
+        text:
+          multiline: true
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input trigger_entity
+    to: !input trigger_state
+
+variables:
+  move_list_raw: !input move_list
+
+action:
+  - service: reachy_mini.play_recorded_move
+    target:
+      device_id: !input reachy_device
+    data:
+      dataset: !input dataset
+      move: >
+        {{ move_list_raw.split(',') | map('trim') | reject('eq', '') | list | random }}

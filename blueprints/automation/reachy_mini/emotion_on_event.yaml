@@ -1,0 +1,63 @@
+blueprint:
+  name: "Reachy Mini: React with an emotion on any trigger"
+  description: >
+    Plays a chosen emotion whenever a target entity flips to a target
+    state. Bare-bones and generic — pair a doorbell button with
+    `surprised1`, a smoke alarm with `scared1`, a load-shedding sensor
+    with `tired1`, etc.
+
+
+    **Showcases** the `reachy_mini.play_recorded_move` service action.
+    See the *Move catalog reference* in the integration README for the
+    full list of bundled emotions.
+  domain: automation
+  author: Pollen Robotics
+  source_url: https://github.com/pollen-robotics/reachy_mini_homeassistant/blob/main/blueprints/automation/reachy_mini/emotion_on_event.yaml
+  input:
+    trigger_entity:
+      name: "Trigger entity"
+      description: >
+        Any state-bearing entity. The automation fires when this entity
+        transitions to the configured state.
+      selector:
+        entity: {}
+    trigger_state:
+      name: "Target state"
+      description: >
+        Fire when the entity transitions *to* this state. Common values:
+        `on` (binary sensors, buttons), `home` (person).
+      default: "on"
+      selector:
+        text: {}
+    reachy_device:
+      name: "Reachy Mini device"
+      selector:
+        device:
+          integration: reachy_mini
+    dataset:
+      name: "Move dataset"
+      default: pollen-robotics/reachy-mini-emotions-library
+      selector:
+        text: {}
+    move:
+      name: "Move name"
+      description: SDK move name (e.g. `surprised1`, `scared1`, `proud1`).
+      default: surprised1
+      selector:
+        text: {}
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input trigger_entity
+    to: !input trigger_state
+
+action:
+  - service: reachy_mini.play_recorded_move
+    target:
+      device_id: !input reachy_device
+    data:
+      dataset: !input dataset
+      move: !input move
