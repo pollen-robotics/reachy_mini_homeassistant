@@ -132,6 +132,148 @@ For automations and blueprints there's also a global service action,
 of the bundled libraries or any custom HF dataset the daemon has
 cached — the daemon validates unknown datasets.
 
+### Move catalog reference
+
+A snapshot of the moves the SDK ships in its two bundled libraries. The
+left column is what you see in the `Emotion` / `Dance` dropdowns; the
+right column is the SDK move name you pass to the
+`reachy_mini.play_recorded_move` service action. Future SDK releases
+may add or rename moves — anything the daemon returns but isn't listed
+here will appear in the dropdown using its raw SDK name.
+
+> Emoji-and-label mapping adapted from
+> [reachy-mini-desktop-app](https://github.com/pollen-robotics/reachy-mini-desktop-app)
+> (Apache 2.0 © Pollen Robotics).
+
+<details>
+<summary><strong>Emotions</strong> (81 moves)</summary>
+
+| Display label | SDK move name |
+|---|---|
+| 😨 Fear | `fear1` |
+| 😩 Exhausted | `exhausted1` |
+| 🥰 Loving | `loving1` |
+| 🪩 Dance 3 | `dance3` |
+| 😑 Boredom 2 | `boredom2` |
+| 😌 Relief 1 | `relief1` |
+| 😟 Anxiety | `anxiety1` |
+| 🤢 Disgusted | `disgusted1` |
+| 👋 Welcoming 1 | `welcoming1` |
+| ⏳ Impatient 1 | `impatient1` |
+| 😭 Sad 1 | `sad1` |
+| 🤝 Helpful 2 | `helpful2` |
+| 😞 Resigned | `resigned1` |
+| 🤩 Amazed | `amazed1` |
+| 💭 Thoughtful 2 | `thoughtful2` |
+| 😵‍💫 Lost | `lost1` |
+| 😲 Surprised 1 | `surprised1` |
+| 🧘 Serenity | `serenity1` |
+| 😒 Displeased 1 | `displeased1` |
+| 🤷 Incomprehensible | `incomprehensible2` |
+| 😤 Irritated 2 | `irritated2` |
+| 🥹 Yes sad | `yes_sad1` |
+| 🕺 Dance 2 | `dance2` |
+| 💡 Understanding 1 | `understanding1` |
+| 🙄 Contempt | `contempt1` |
+| ❓ Inquiring 1 | `inquiring1` |
+| 😡 Rage | `rage1` |
+| 🦉 Attentive 2 | `attentive2` |
+| 👎 No | `no1` |
+| 🫣 Oops 1 | `oops1` |
+| 💪 Proud 3 | `proud3` |
+| 🚫 Reprimand 3 | `reprimand3` |
+| 😡 Reprimand 2 | `reprimand2` |
+| 😱 Scared | `scared1` |
+| 🙅‍♂️ No excited | `no_excited1` |
+| 🫴 Come | `come1` |
+| 🏆 Proud 2 | `proud2` |
+| ✨ Success 1 | `success1` |
+| 🥳 Enthusiastic 2 | `enthusiastic2` |
+| 😂 Laughing 1 | `laughing1` |
+| 😵 Dying | `dying1` |
+| 🌟 Success 2 | `success2` |
+| 🎊 Enthusiastic 1 | `enthusiastic1` |
+| 🧐 Curious | `curious1` |
+| 🤣 Laughing 2 | `laughing2` |
+| 😴 Tired | `tired1` |
+| 😤 Reprimand 1 | `reprimand1` |
+| 😎 Proud 1 | `proud1` |
+| 🙏 Grateful | `grateful1` |
+| 😫 Frustrated | `frustrated1` |
+| ☮️ Calming | `calming1` |
+| 👂 Attentive 1 | `attentive1` |
+| 🤬 Furious | `furious1` |
+| 😅 Oops 2 | `oops2` |
+| 😠 Irritated 1 | `irritated1` |
+| 👍 Yes | `yes1` |
+| 😕 Confused | `confused1` |
+| 🤝 Understanding 2 | `understanding2` |
+| 💃 Dance 1 | `dance1` |
+| 😳 Shy | `shy1` |
+| 🔍 Inquiring 2 | `inquiring2` |
+| 🤨 Uncertain | `uncertain1` |
+| 🤔 Thoughtful 1 | `thoughtful1` |
+| 😯 Surprised 2 | `surprised2` |
+| 😑 Displeased 2 | `displeased2` |
+| 🙄 Impatient 2 | `impatient2` |
+| 🤗 Welcoming 2 | `welcoming2` |
+| 😐 Indifferent | `indifferent1` |
+| 😢 Sad 2 | `sad2` |
+| 🙋 Helpful 1 | `helpful1` |
+| 🥺 Lonely | `lonely1` |
+| 😊 Cheerful | `cheerful1` |
+| 🤨 Inquiring 3 | `inquiring3` |
+| 😔 Downcast | `downcast1` |
+| 💤 Sleep | `sleep1` |
+| 🥱 Boredom 1 | `boredom1` |
+| 😬 Uncomfortable | `uncomfortable1` |
+| 👉 Go away | `go_away1` |
+| ⚡ Electric | `electric1` |
+| 😮‍💨 Relief 2 | `relief2` |
+| 😥 No sad | `no_sad1` |
+</details>
+
+<details>
+<summary><strong>Dances</strong> (34 moves)</summary>
+
+| Display label | SDK move name |
+|---|---|
+| 🫨 Stumble and recover | `stumble_and_recover` |
+| 🎭 Chin lead | `chin_lead` |
+| 🔃 Head tilt roll | `head_tilt_roll` |
+| 🕴️ Jackson square | `jackson_square` |
+| 🎐 Pendulum swing | `pendulum_swing` |
+| 👁️ Side glance flick | `side_glance_flick` |
+| 🤖 Grid snap | `grid_snap` |
+| 😌 Simple nod | `simple_nod` |
+| 🌊 Side to side sway | `side_to_side_sway` |
+| 🥁 Polyrhythm combo | `polyrhythm_combo` |
+| 🌀 Interwoven spirals | `interwoven_spirals` |
+| 😏 Uh huh tilt | `uh_huh_tilt` |
+| 🐓 Chicken peck | `chicken_peck` |
+| 🙌 Yeah nod | `yeah_nod` |
+| 🤘 Headbanger combo | `headbanger_combo` |
+| 🙈 Side peekaboo | `side_peekaboo` |
+| 💫 Dizzy spin | `dizzy_spin` |
+| ⚡ Neck recoil | `neck_recoil` |
+| 🪩 Groovy sway and roll | `groovy_sway_and_roll` |
+| 📐 Sharp side tilt | `sharp_side_tilt` |
+| 💍 Beyonce single ladies | `beyonce-single-ladies` |
+| 👹 Demon hunters | `demon-hunters-1` |
+| 🌴 Eagles hotel california | `eagles-hotel-california` |
+| 🎤 Eminem lose yourself | `eminem-lose-yourself` |
+| ✨ Feel the magic in the air | `feel-the-magic-in-the-air` |
+| 🎆 Katy perry fireworks | `katy-perry-fireworks` |
+| 🍅 Las ketchup | `las-ketchup` |
+| 🧟 Michael jackson thriller | `michael-jackson-thriller` |
+| 🖤 Paint it black | `paint-it-black` |
+| 😀 Pharrell williams happy | `pharrell-williams-happy` |
+| 👑 Queen we will rock you | `queen-we-will-rock-you` |
+| 🎀 Spice girls | `spice-girls` |
+| 🎻 The fratellis whistle for the choir | `the-fratellis-whistle-for-the-choir` |
+| ⚔️ The white stripes seven nation army | `the-white-stripes-seven-nation-army` |
+</details>
+
 ### Not yet exposed
 
 The SDK doesn't currently expose REST routes for these; they're easy
