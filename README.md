@@ -10,11 +10,12 @@ instance, polls the robot's daemon every 30 s, and exposes:
   direction (microphone-array DoA),
 - **binary sensors** for awake state, WebRTC session activity, and
   speech detection,
-- a writable **select** for motor mode (enabled / disabled /
-  gravity compensation),
+- writable **selects** for motor mode (enabled / disabled /
+  gravity compensation), emotion, and dance,
 - writable **number sliders** for speaker and microphone volume,
 - one-shot action **buttons** for wake up, go to sleep, stop/restart
-  the running app, play a test sound, and restart the daemon.
+  the running app, play a test sound, restart the daemon, play
+  emotion, and play dance.
 
 Auto-discovery uses the `_reachy-mini._tcp.local.` mDNS advertisement
 the daemon ships out of the box. Polling fans out to several of the
@@ -86,6 +87,8 @@ its stable `unit_id` (a hash of the audio device serial). Underneath:
 | Entity | Options | Notes |
 |---|---|---|
 | Motor mode | `enabled` / `disabled` / `gravity_compensation` | Picking an option POSTs to `/api/motors/set_mode/{mode}`. Use `disabled` as a soft E-stop (motors release torque). |
+| Emotion | One entry per move in the emotions library | Stores the chosen emotion name; does not play it. Use the *Play emotion* button (or the `reachy_mini.play_recorded_move` service) to trigger playback. |
+| Dance | One entry per move in the dances library | Stores the chosen dance name; does not play it. Use the *Play dance* button (or the `reachy_mini.play_recorded_move` service) to trigger playback. |
 
 ### Numbers (controllable sliders)
 
@@ -108,6 +111,168 @@ the value actually applied.
 | Restart current app | `POST /api/apps/restart-current-app` | Stop + start the current app — handy if it got stuck. |
 | Play test sound | `POST /api/volume/test-sound` | Plays `impatient1.wav` — quick speaker check. |
 | Restart daemon | `POST /api/daemon/restart` | Soft restart of the daemon process. Use sparingly. |
+| Play emotion | `POST /api/move/play/recorded-move-dataset/{dataset}/{move}` | Plays the emotion currently selected in the *Emotion* select entity. |
+| Play dance | `POST /api/move/play/recorded-move-dataset/{dataset}/{move}` | Plays the dance currently selected in the *Dance* select entity. |
+
+### Recorded moves (emotions and dances)
+
+The integration picks up the daemon's two preloaded move libraries
+(`pollen-robotics/reachy-mini-emotions-library` and
+`pollen-robotics/reachy-mini-dances-library`) at setup. For each
+populated library you get:
+
+- a select entity (`Emotion` / `Dance`) listing every move in the
+  library — picking does not play; it just stores the choice;
+- a button entity (`Play emotion` / `Play dance`) that plays whatever
+  is selected.
+
+For automations and blueprints there's also a global service action,
+`reachy_mini.play_recorded_move`, which takes a target device, a
+`dataset` (HF repo path) and a `move` (string). The dataset can be one
+of the bundled libraries or any custom HF dataset the daemon has
+cached — the daemon validates unknown datasets.
+
+### Move catalog reference
+
+A snapshot of the moves the SDK ships in its two bundled libraries. The
+left column is what you see in the `Emotion` / `Dance` dropdowns; the
+right column is the SDK move name you pass to the
+`reachy_mini.play_recorded_move` service action. Future SDK releases
+may add or rename moves — anything the daemon returns but isn't listed
+here will appear in the dropdown using its raw SDK name.
+
+> Emoji-and-label mapping adapted from
+> [reachy-mini-desktop-app](https://github.com/pollen-robotics/reachy-mini-desktop-app)
+> (Apache 2.0 © Pollen Robotics).
+
+<details>
+<summary><strong>Emotions</strong> (81 moves)</summary>
+
+| Display label | SDK move name |
+|---|---|
+| 😨 Fear | `fear1` |
+| 😩 Exhausted | `exhausted1` |
+| 🥰 Loving | `loving1` |
+| 🪩 Dance 3 | `dance3` |
+| 😑 Boredom 2 | `boredom2` |
+| 😌 Relief 1 | `relief1` |
+| 😟 Anxiety | `anxiety1` |
+| 🤢 Disgusted | `disgusted1` |
+| 👋 Welcoming 1 | `welcoming1` |
+| ⏳ Impatient 1 | `impatient1` |
+| 😭 Sad 1 | `sad1` |
+| 🤝 Helpful 2 | `helpful2` |
+| 😞 Resigned | `resigned1` |
+| 🤩 Amazed | `amazed1` |
+| 💭 Thoughtful 2 | `thoughtful2` |
+| 😵‍💫 Lost | `lost1` |
+| 😲 Surprised 1 | `surprised1` |
+| 🧘 Serenity | `serenity1` |
+| 😒 Displeased 1 | `displeased1` |
+| 🤷 Incomprehensible | `incomprehensible2` |
+| 😤 Irritated 2 | `irritated2` |
+| 🥹 Yes sad | `yes_sad1` |
+| 🕺 Dance 2 | `dance2` |
+| 💡 Understanding 1 | `understanding1` |
+| 🙄 Contempt | `contempt1` |
+| ❓ Inquiring 1 | `inquiring1` |
+| 😡 Rage | `rage1` |
+| 🦉 Attentive 2 | `attentive2` |
+| 👎 No | `no1` |
+| 🫣 Oops 1 | `oops1` |
+| 💪 Proud 3 | `proud3` |
+| 🚫 Reprimand 3 | `reprimand3` |
+| 😡 Reprimand 2 | `reprimand2` |
+| 😱 Scared | `scared1` |
+| 🙅‍♂️ No excited | `no_excited1` |
+| 🫴 Come | `come1` |
+| 🏆 Proud 2 | `proud2` |
+| ✨ Success 1 | `success1` |
+| 🥳 Enthusiastic 2 | `enthusiastic2` |
+| 😂 Laughing 1 | `laughing1` |
+| 😵 Dying | `dying1` |
+| 🌟 Success 2 | `success2` |
+| 🎊 Enthusiastic 1 | `enthusiastic1` |
+| 🧐 Curious | `curious1` |
+| 🤣 Laughing 2 | `laughing2` |
+| 😴 Tired | `tired1` |
+| 😤 Reprimand 1 | `reprimand1` |
+| 😎 Proud 1 | `proud1` |
+| 🙏 Grateful | `grateful1` |
+| 😫 Frustrated | `frustrated1` |
+| ☮️ Calming | `calming1` |
+| 👂 Attentive 1 | `attentive1` |
+| 🤬 Furious | `furious1` |
+| 😅 Oops 2 | `oops2` |
+| 😠 Irritated 1 | `irritated1` |
+| 👍 Yes | `yes1` |
+| 😕 Confused | `confused1` |
+| 🤝 Understanding 2 | `understanding2` |
+| 💃 Dance 1 | `dance1` |
+| 😳 Shy | `shy1` |
+| 🔍 Inquiring 2 | `inquiring2` |
+| 🤨 Uncertain | `uncertain1` |
+| 🤔 Thoughtful 1 | `thoughtful1` |
+| 😯 Surprised 2 | `surprised2` |
+| 😑 Displeased 2 | `displeased2` |
+| 🙄 Impatient 2 | `impatient2` |
+| 🤗 Welcoming 2 | `welcoming2` |
+| 😐 Indifferent | `indifferent1` |
+| 😢 Sad 2 | `sad2` |
+| 🙋 Helpful 1 | `helpful1` |
+| 🥺 Lonely | `lonely1` |
+| 😊 Cheerful | `cheerful1` |
+| 🤨 Inquiring 3 | `inquiring3` |
+| 😔 Downcast | `downcast1` |
+| 💤 Sleep | `sleep1` |
+| 🥱 Boredom 1 | `boredom1` |
+| 😬 Uncomfortable | `uncomfortable1` |
+| 👉 Go away | `go_away1` |
+| ⚡ Electric | `electric1` |
+| 😮‍💨 Relief 2 | `relief2` |
+| 😥 No sad | `no_sad1` |
+</details>
+
+<details>
+<summary><strong>Dances</strong> (34 moves)</summary>
+
+| Display label | SDK move name |
+|---|---|
+| 🫨 Stumble and recover | `stumble_and_recover` |
+| 🎭 Chin lead | `chin_lead` |
+| 🔃 Head tilt roll | `head_tilt_roll` |
+| 🕴️ Jackson square | `jackson_square` |
+| 🎐 Pendulum swing | `pendulum_swing` |
+| 👁️ Side glance flick | `side_glance_flick` |
+| 🤖 Grid snap | `grid_snap` |
+| 😌 Simple nod | `simple_nod` |
+| 🌊 Side to side sway | `side_to_side_sway` |
+| 🥁 Polyrhythm combo | `polyrhythm_combo` |
+| 🌀 Interwoven spirals | `interwoven_spirals` |
+| 😏 Uh huh tilt | `uh_huh_tilt` |
+| 🐓 Chicken peck | `chicken_peck` |
+| 🙌 Yeah nod | `yeah_nod` |
+| 🤘 Headbanger combo | `headbanger_combo` |
+| 🙈 Side peekaboo | `side_peekaboo` |
+| 💫 Dizzy spin | `dizzy_spin` |
+| ⚡ Neck recoil | `neck_recoil` |
+| 🪩 Groovy sway and roll | `groovy_sway_and_roll` |
+| 📐 Sharp side tilt | `sharp_side_tilt` |
+| 💍 Beyonce single ladies | `beyonce-single-ladies` |
+| 👹 Demon hunters | `demon-hunters-1` |
+| 🌴 Eagles hotel california | `eagles-hotel-california` |
+| 🎤 Eminem lose yourself | `eminem-lose-yourself` |
+| ✨ Feel the magic in the air | `feel-the-magic-in-the-air` |
+| 🎆 Katy perry fireworks | `katy-perry-fireworks` |
+| 🍅 Las ketchup | `las-ketchup` |
+| 🧟 Michael jackson thriller | `michael-jackson-thriller` |
+| 🖤 Paint it black | `paint-it-black` |
+| 😀 Pharrell williams happy | `pharrell-williams-happy` |
+| 👑 Queen we will rock you | `queen-we-will-rock-you` |
+| 🎀 Spice girls | `spice-girls` |
+| 🎻 The fratellis whistle for the choir | `the-fratellis-whistle-for-the-choir` |
+| ⚔️ The white stripes seven nation army | `the-white-stripes-seven-nation-army` |
+</details>
 
 ### Not yet exposed
 
@@ -121,7 +286,7 @@ additive extensions if anyone wants them:
 
 ## Blueprints
 
-Six ready-made automation blueprints ship in the
+Ready-made automation blueprints ship in the
 `blueprints/automation/reachy_mini/` folder of this repo. Each pre-fills
 its entity dropdowns with the names this integration creates — you
 typically only have to pick the action targets. Click an import badge,
@@ -135,6 +300,11 @@ then *Import* and *Create automation* in HA.
 | **Run an action with the speaker's direction** | Exposes `doa_deg` (0 = left, 90 = front, 180 = right) to the chosen actions on speech detect — for steering a smart light, panning a camera, etc. | `sensor.reachy_mini_voice_direction` + speech sensor | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Frun_with_doa.yaml) |
 | **Wake up on arrival or presence** | When a person, motion sensor, door sensor (etc.) changes to a chosen state, press the wake-up button — only if the robot isn't already awake. | `button.reachy_mini_wake_up` + awake binary sensor | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fwake_on_presence.yaml) |
 | **Day / night speaker volume** | Two scheduled times → set `number.reachy_mini_speaker_volume` to different day and night levels automatically. | `number.reachy_mini_speaker_volume` slider | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fnight_volume.yaml) |
+| **Greet on arrival** | Plays a chosen emotion when a person/motion/door entity flips to a target state. Optional "skip if asleep" safety condition. | `reachy_mini.play_recorded_move` service action | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fgreet_on_arrival.yaml) |
+| **React with an emotion on any trigger** | Generic "state-change → play emotion" wiring. Pair a doorbell button with `surprised1`, a smoke alarm with `scared1`, etc. | `reachy_mini.play_recorded_move` | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Femotion_on_event.yaml) |
+| **Daily dance party** | At a scheduled time (with weekday filter), the robot plays a chosen dance. Works with the bundled dances or community music dances. | `reachy_mini.play_recorded_move` | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fdaily_dance.yaml) |
+| **Random emotion on trigger** | Picks a move at random from a user-curated comma-separated list each time the trigger fires. Showcases Jinja templating. | `reachy_mini.play_recorded_move` | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Frandom_emotion_on_trigger.yaml) |
+| **Voice assistant feedback** | When an `assist_satellite.*` entity (or any entity) transitions to a "listening" state, the robot plays `attentive1`. | `reachy_mini.play_recorded_move` | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fpollen-robotics%2Freachy_mini_homeassistant%2Fmain%2Fblueprints%2Fautomation%2Freachy_mini%2Fvoice_assistant_feedback.yaml) |
 
 ## Troubleshooting
 

@@ -1,0 +1,70 @@
+blueprint:
+  name: "Reachy Mini: Voice assistant feedback"
+  description: >
+    Plays a recorded emotion whenever an Assist Satellite starts
+    listening — for example, react with `attentive1` while the
+    satellite captures your command. Pairs well with HA Voice, the
+    ESP32-S3-Box, Wyoming Satellite, or any other `assist_satellite.*`
+    entity.
+
+
+    If you don't use Assist Satellite, point this at any state-bearing
+    entity whose target state means "the robot should react now".
+
+
+    **Showcases** the `reachy_mini.play_recorded_move` service action
+    chained off a voice-pipeline state transition.
+  domain: automation
+  author: Pollen Robotics
+  source_url: https://github.com/pollen-robotics/reachy_mini_homeassistant/blob/main/blueprints/automation/reachy_mini/voice_assistant_feedback.yaml
+  input:
+    listening_entity:
+      name: "Listening entity"
+      description: >
+        Typically an `assist_satellite.*` entity. The automation fires
+        when this entity transitions to the listening state below.
+      selector:
+        entity: {}
+    listening_state:
+      name: "Listening state"
+      description: >
+        State that means "actively listening". For HA's built-in Assist
+        Satellite this is `listening` (the default). For other entities
+        it might be `on` or `recording`.
+      default: listening
+      selector:
+        text: {}
+    reachy_device:
+      name: "Reachy Mini device"
+      selector:
+        device:
+          integration: reachy_mini
+    dataset:
+      name: "Move dataset"
+      default: pollen-robotics/reachy-mini-emotions-library
+      selector:
+        text: {}
+    move:
+      name: "Move to play while listening"
+      description: >
+        Common picks: `attentive1`, `attentive2`, `thoughtful1`,
+        `inquiring2`.
+      default: attentive1
+      selector:
+        text: {}
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input listening_entity
+    to: !input listening_state
+
+action:
+  - service: reachy_mini.play_recorded_move
+    target:
+      device_id: !input reachy_device
+    data:
+      dataset: !input dataset
+      move: !input move
