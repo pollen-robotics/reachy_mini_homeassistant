@@ -29,7 +29,20 @@ ENDPOINT_VOLUME_MIC_SET = "/api/volume/microphone/set"
 # Other writable endpoints used by select / button entities.
 ENDPOINT_MOTOR_SET_MODE = "/api/motors/set_mode/{mode}"  # path-templated
 ENDPOINT_MOVE_WAKE_UP = "/api/move/play/wake_up"
-ENDPOINT_MOVE_GOTO_SLEEP = "/api/move/play/goto_sleep"
+
+# Daemon lifecycle endpoints — the canonical wake/sleep on the
+# Wireless unit, where "asleep" means the backend is fully stopped
+# and every /api/motors/* and /api/move/* route returns 503. Mirrors
+# the official dashboard (dashboard/static/js/daemon.js). The start
+# path also enables motor torque before the wake move, which the bare
+# ENDPOINT_MOVE_WAKE_UP does not.
+ENDPOINT_DAEMON_START_WAKE = "/api/daemon/start?wake_up=true"
+ENDPOINT_DAEMON_STOP_SLEEP = "/api/daemon/stop?goto_sleep=true"
+
+# /api/daemon/status "state" value while the backend is up. Anything
+# else (stopped, not_initialized, starting, stopping, error) means the
+# backend-gated endpoints are unusable.
+DAEMON_STATE_RUNNING = "running"
 ENDPOINT_APP_STOP_CURRENT = "/api/apps/stop-current-app"
 ENDPOINT_APP_RESTART_CURRENT = "/api/apps/restart-current-app"
 ENDPOINT_VOLUME_TEST_SOUND = "/api/volume/test-sound"

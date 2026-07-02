@@ -18,10 +18,12 @@ from dataclasses import dataclass
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import (
+    DAEMON_STATE_RUNNING,
     DANCES_DATASET,
     DOMAIN,
     EMOTIONS_DATASET,
@@ -112,6 +114,15 @@ class ReachyMiniMotorModeSelect(ReachyMiniEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """POST the selected mode to the daemon."""
+        # While the backend is stopped (the robot is asleep), the
+        # set_mode endpoint answers 503 "Backend not running" — turn
+        # that into an actionable message instead.
+        data = self.coordinator.data or {}
+        if data.get("daemon_state") != DAEMON_STATE_RUNNING:
+            raise HomeAssistantError(
+                "Cannot set motor mode while Reachy Mini is asleep "
+                "(daemon backend stopped) — press Wake up first"
+            )
         path = ENDPOINT_MOTOR_SET_MODE.format(mode=option)
         await self.coordinator.async_post(path)
 

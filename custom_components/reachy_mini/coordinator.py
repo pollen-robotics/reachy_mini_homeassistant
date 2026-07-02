@@ -38,6 +38,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
+    DAEMON_STATE_RUNNING,
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TIMEOUT,
@@ -55,8 +56,15 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def _derive_awake(motor_mode: str | None) -> bool | None:
-    """`enabled` and `gravity_compensation` both count as awake."""
+def _derive_awake(motor_mode: str | None, daemon_state: str | None) -> bool | None:
+    """`enabled` and `gravity_compensation` both count as awake.
+
+    A backend that isn't running at all (the Wireless unit's normal
+    asleep state — it reports no motor mode) is definitively asleep,
+    not unknown.
+    """
+    if daemon_state is not None and daemon_state != DAEMON_STATE_RUNNING:
+        return False
     if motor_mode is None:
         return None
     return motor_mode in ("enabled", "gravity_compensation")
@@ -188,6 +196,7 @@ class ReachyMiniCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "firmware_version": None,
             "hardware_id": None,
             "robot_name": None,
+            "daemon_state": None,
             "motor_mode": None,
             "awake": None,
             # App slot from /api/daemon/robot-app-lock-status
@@ -206,10 +215,12 @@ class ReachyMiniCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             data["firmware_version"] = status.get("version")
             data["hardware_id"] = status.get("hardware_id")
             data["robot_name"] = status.get("robot_name")
+            daemon_state = status.get("state")
+            data["daemon_state"] = daemon_state
             backend = status.get("backend_status") or {}
             motor_mode = backend.get("motor_control_mode")
             data["motor_mode"] = motor_mode
-            data["awake"] = _derive_awake(motor_mode)
+            data["awake"] = _derive_awake(motor_mode, daemon_state)
 
         if isinstance(app_lock, dict):
             data.update(
