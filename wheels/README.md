@@ -1,17 +1,23 @@
-# wheels/
+# Compatibility wheels
 
-`aiortc-1.14.0+av17-py3-none-any.whl` is a byte-identical repackage of the
-official pure-Python [aiortc](https://github.com/aiortc/aiortc) 1.14.0 wheel
-with a single metadata line relaxed: the `av<17` cap becomes `av<19`.
+`aiortc-1.14.0+av19.1-py3-none-any.whl` allows the AV19 version pinned by
+Home Assistant 2026.10.1. It changes the distribution version and the
+`av` upper bound to `<20`, then regenerates RECORD. Runtime code and
+licenses are unchanged.
 
-Home Assistant pins `av==17.x`, which makes every upstream aiortc release
-unresolvable in HA's pip environment even though aiortc 1.14 works fine with
-av 17 at runtime. The integration's `manifest.json` installs this wheel
-directly by URL with a `#sha256=` integrity pin.
+Run `python scripts/build_av19_wheel.py` to reproduce the wheel. The source
+is the retained `aiortc-1.14.0+av17-py3-none-any.whl`, a metadata-only
+repackage of upstream aiortc 1.14.0 which relaxed `av<17` to `av<19`.
+The build script checks its SHA256 before making changes.
 
-The wheel is committed to the repo (rather than attached to a GitHub release)
-because HACS treats any release — including pre-releases — as an integration
-version and would offer the wheel-hosting tag as a bogus "update".
+Output SHA256:
+`bc7b96ef1acca84d73bf2ea43fcc2d63575136e25c2cbd8136ddf3afb6033403`
 
-**Remove this directory and restore a plain `aiortc>=...` requirement once an
-aiortc release allows `av>=17`** — watch upstream's `pyproject.toml`.
+The AV19 workflow checks reproducibility, dependency resolution, integration
+imports, H.264/VP8 video, audio and JPEG encoding with HA 2026.10.1 dependencies.
+It does not validate every aiortc feature or every older AV version.
+
+The wheel stays in the repository because HACS treats release tags as
+integration versions. The manifest URL includes a SHA256 integrity pin.
+Replace this wheel with a normal PyPI requirement when an upstream aiortc
+release supports HA's pinned AV version.
