@@ -23,10 +23,10 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import io
 import json
 import logging
 from collections.abc import Callable
+from fractions import Fraction
 from typing import Any
 
 import aiohttp
@@ -77,21 +77,55 @@ def _default_pc_factory() -> RTCPeerConnection:
     return pc
 
 
-def _encode_jpeg(frame: Any) -> bytes:
-    """Encode one decoded av.VideoFrame to JPEG (runs in an executor)."""
-    import av
+class _JpegEncoder:
+    """One bare codec context; avoids per-frame container reference cycles.
 
-    buffer = io.BytesIO()
-    with av.open(buffer, mode="w", format="mjpeg") as container:
-        stream = container.add_stream("mjpeg", rate=1)
-        stream.width = frame.width
-        stream.height = frame.height
-        stream.pix_fmt = "yuvj420p"
-        for packet in stream.encode(frame.reformat(format="yuvj420p")):
-            container.mux(packet)
-        for packet in stream.encode():
-            container.mux(packet)
-    return buffer.getvalue()
+    Access is serialized by the client's single-flight task. No container,
+    stream or muxer is needed: each MJPEG packet is a complete JPEG.
+    """
+
+    def __init__(self) -> None:
+        self._codec = None
+        self._size = None
+
+    def encode(self, frame: Any) -> bytes:
+        import av
+
+        size = (frame.width, frame.height)
+        if self._codec is None or self._size != size:
+            self.close()
+            codec = av.CodecContext.create("mjpeg", "w")
+            codec.width, codec.height = size
+            codec.pix_fmt = "yuvj420p"
+            codec.time_base = Fraction(1, 90000)
+            codec.thread_count = 1
+            # A reusable MJPEG codec must not tighten compression over time
+            # to satisfy the bare context's default 200 kbps rate target.
+            codec.bit_rate = 0
+            codec.qscale = True
+            codec.global_quality = 8  # PyAV takes QP units, not FF_QP2LAMBDA.
+            codec.open()
+            self._codec = codec
+            self._size = size
+        packets = self._codec.encode(frame.reformat(format="yuvj420p"))
+        if len(packets) != 1:
+            raise StreamUnavailableError("JPEG encoder did not return one image")
+        return bytes(packets[0])
+
+    def close(self) -> None:
+        # Bare CodecContext owns its native resources without a container cycle.
+        # Only drop it after the worker has finished; never flush per frame.
+        self._codec = None
+        self._size = None
+
+
+def _encode_jpeg(frame: Any) -> bytes:
+    """One-shot helper for callers/tests; live viewing reuses _JpegEncoder."""
+    encoder = _JpegEncoder()
+    try:
+        return encoder.encode(frame)
+    finally:
+        encoder.close()
 
 
 class ReachyMiniStreamClient:
@@ -136,6 +170,9 @@ class ReachyMiniStreamClient:
         self._frame: Any | None = None
         self._frame_event = asyncio.Event()
         self._jpeg_cache: tuple[Any, bytes] | None = None
+        self._jpeg_encoder = _JpegEncoder()
+        self._jpeg_task: asyncio.Task | None = None
+        self._audio_tasks: set[asyncio.Task] = set()
 
     @property
     def signalling_url(self) -> str:
@@ -230,11 +267,36 @@ class ReachyMiniStreamClient:
         cache = self._jpeg_cache
         if cache is not None and cache[0] is frame:
             return cache[1]
-        jpeg = await asyncio.get_running_loop().run_in_executor(
-            None, _encode_jpeg, frame
-        )
+        # No await between checking and publishing the shared task. A cancelled
+        # viewer must not cancel a worker still used by other viewers.
+        task = self._jpeg_task
+        if task is None or task.done():
+            task = asyncio.create_task(self._encode_frame(frame))
+            task.add_done_callback(self._log_idle_task_result)
+            self._jpeg_task = task
+        return await asyncio.shield(task)
+
+    async def _encode_frame(self, frame: Any) -> bytes:
+        try:
+            jpeg = await asyncio.get_running_loop().run_in_executor(
+                None, self._jpeg_encoder.encode, frame
+            )
+        except Exception as err:
+            raise StreamUnavailableError("JPEG encoding failed") from err
         self._jpeg_cache = (frame, jpeg)
         return jpeg
+
+    async def _clear_media(self) -> None:
+        # Reject new image work before waiting for the existing executor job.
+        self._frame = None
+        self._frame_event.set()
+        task = self._jpeg_task
+        if task is not None:
+            with contextlib.suppress(Exception):
+                await asyncio.shield(task)
+        self._jpeg_task = None
+        self._jpeg_cache = None
+        self._jpeg_encoder.close()
 
     async def _stop_session(self) -> None:
         # Await the cancelled task: stop and acquire both run under
@@ -248,8 +310,7 @@ class ReachyMiniStreamClient:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
-        self._frame = None
-        self._jpeg_cache = None
+        await self._clear_media()
 
     async def _run_session(self) -> None:
         loop = asyncio.get_running_loop()
@@ -290,18 +351,35 @@ class ReachyMiniStreamClient:
         finally:
             if not clean_stop:
                 self._cooldown_until = loop.time() + self._cooldown
-            video_task = self._video_task
-            self._video_task = None
-            if video_task is not None:
-                video_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError, Exception):
-                    await video_task
-            with contextlib.suppress(Exception):
-                await pc.close()
-            self._frame = None
-            self._jpeg_cache = None
-            # Wake any waiters so they fail fast instead of timing out.
-            self._frame_event.set()
+            # A stop can arrive while a naturally-ended session is already
+            # cleaning up. Cancelling pc.close() can leave aiortc's close
+            # future unfinished, so finish cleanup before propagating it.
+            cleanup = asyncio.create_task(self._finish_session(pc))
+            try:
+                await asyncio.shield(cleanup)
+            except asyncio.CancelledError:
+                await asyncio.shield(cleanup)
+                raise
+
+    async def _finish_session(self, pc: Any) -> None:
+        video_task = self._video_task
+        self._video_task = None
+        if video_task is not None:
+            video_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await video_task
+        audio_tasks = tuple(self._audio_tasks)
+        self._audio_tasks.clear()
+        for task in audio_tasks:
+            task.cancel()
+        await asyncio.gather(*audio_tasks, return_exceptions=True)
+        with contextlib.suppress(Exception):
+            await pc.close()
+        await self._clear_media()
+        self._frame = None
+        self._jpeg_cache = None
+        # Wake any waiters so they fail fast instead of timing out.
+        self._frame_event.set()
 
     async def _signalling_loop(self, ws: Any, pc: Any) -> None:
         pc.on("track", self._on_track)
@@ -380,6 +458,20 @@ class ReachyMiniStreamClient:
             self._video_task = asyncio.get_running_loop().create_task(
                 self._consume_video(track)
             )
+
+        elif track.kind == "audio":
+            task = asyncio.create_task(self._discard_audio(track))
+            self._audio_tasks.add(task)
+            task.add_done_callback(self._audio_tasks.discard)
+            task.add_done_callback(self._log_idle_task_result)
+
+    async def _discard_audio(self, track: Any) -> None:
+        """Drain unused audio so aiortc's decoded-frame queue stays bounded."""
+        try:
+            while True:
+                await track.recv()
+        except MediaStreamError:
+            pass
 
     async def _consume_video(self, track: Any) -> None:
         try:

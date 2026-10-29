@@ -286,6 +286,7 @@ async def test_jpeg_encoded_once_per_frame(signalling_server, http_session) -> N
     second = await client.async_get_image(timeout=5)
     assert first is second  # cached by frame identity, not re-encoded
     await client.release()
+    await client.async_shutdown()
 
 
 async def test_shutdown_stops_session(signalling_server, http_session) -> None:
@@ -321,6 +322,7 @@ async def test_no_producer_fails_fast_and_cools_down(
     await client.release()
     # ...which shows as exactly one `list` request server-side.
     assert [m["type"] for m in script.received].count("list") == 1
+    await client.async_shutdown()
 
 
 async def test_producer_end_session_surfaces_as_unavailable(
@@ -337,6 +339,7 @@ async def test_producer_end_session_surfaces_as_unavailable(
     with pytest.raises(StreamUnavailableError):
         await client.async_get_image(timeout=5)
     await client.release()
+    await client.async_shutdown()
 
 
 async def test_unreachable_robot_raises(socket_enabled: None, http_session) -> None:
@@ -354,6 +357,7 @@ async def test_unreachable_robot_raises(socket_enabled: None, http_session) -> N
     with pytest.raises(StreamUnavailableError):
         await client.async_get_image(timeout=5)
     await client.release()
+    await client.async_shutdown()
 
 
 async def test_release_keeps_session_for_idle_grace(
