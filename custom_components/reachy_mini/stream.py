@@ -70,7 +70,7 @@ def _default_pc_factory() -> RTCPeerConnection:
     pc = RTCPeerConnection(RTCConfiguration(iceServers=[]))
     # aiortc has no public way to supply a DTLS certificate — its
     # RTCConfiguration lacks the spec's `certificates` field (checked
-    # at 1.14) — so replace the auto-generated one on the private
+    # at 1.16) — so replace the auto-generated one on the private
     # attribute. test_default_pc_factory_installs_interop_certificate
     # pins this against aiortc upgrades.
     pc._RTCPeerConnection__certificates = [InteropCertificate.generate()]

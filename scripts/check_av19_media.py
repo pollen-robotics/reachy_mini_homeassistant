@@ -67,7 +67,7 @@ async def check_codec(mime):
 
 async def main():
     assert importlib.metadata.version("av") == "19.0.0"
-    assert importlib.metadata.version("aiortc") == "1.14.0+av19.1"
+    assert importlib.metadata.version("aiortc") == "1.16.0"
     cert = media.InteropCertificate.generate()
     ciphers = SSL.Connection(cert._create_ssl_context(SRTP_PROFILES)).get_cipher_list()
     assert "ECDHE-RSA-AES128-GCM-SHA256" in ciphers
