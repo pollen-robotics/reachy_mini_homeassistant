@@ -23,6 +23,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import (
+    CONVERSATION_APP_NAME,
     DAEMON_STATE_RUNNING,
     DANCES_DATASET,
     DOMAIN,
@@ -85,6 +86,8 @@ async def async_setup_entry(
             )
     if coordinator.available_apps:
         entities.append(ReachyMiniAppSelect(coordinator, entry))
+    if CONVERSATION_APP_NAME in coordinator.available_apps:
+        entities.append(ReachyMiniPersonalitySelect(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -221,3 +224,65 @@ class ReachyMiniAppSelect(ReachyMiniEntity, SelectEntity, RestoreEntity):
         last_state = await self.async_get_last_state()
         if last_state is not None and last_state.state in self._attr_options:
             self.coordinator.selected_app = last_state.state
+
+
+PERSONALITY_DESCRIPTION = SelectEntityDescription(
+    key="conversation_personality",
+    translation_key="conversation_personality",
+    icon="mdi:drama-masks",
+)
+
+
+class ReachyMiniPersonalitySelect(ReachyMiniEntity, SelectEntity, RestoreEntity):
+    """Pick-only select of the conversation app's personalities.
+
+    Read by the ``Start conversation`` button. The catalog comes from
+    the app's /rpc socket, which only answers while the app runs — until
+    it has been fetched once, the only option is the current pick
+    (``default`` on a fresh install). It's refreshed on every start.
+    """
+
+    entity_description = PERSONALITY_DESCRIPTION
+
+    def __init__(
+        self,
+        coordinator: ReachyMiniCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Wire the entity to the coordinator's personality state."""
+        super().__init__(coordinator, entry, PERSONALITY_DESCRIPTION.key)
+
+    @property
+    def options(self) -> list[str]:
+        """The app's personalities, always including the current pick."""
+        options = list(self.coordinator.personalities)
+        current = self.current_option
+        if current not in options:
+            options.insert(0, current)
+        return options
+
+    @property
+    def current_option(self) -> str:
+        """The personality the next conversation will use."""
+        return self.coordinator.selected_personality or "default"
+
+    async def async_select_option(self, option: str) -> None:
+        """Stash the pick on the coordinator; no HTTP call."""
+        if option not in self.options:
+            return
+        self.coordinator.selected_personality = option
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Restore the last pick; the catalog may not be loaded yet."""
+        await super().async_added_to_hass()
+        last_state = await self.async_get_last_state()
+        if last_state is not None and last_state.state not in (
+            None,
+            "unknown",
+            "unavailable",
+        ):
+            if not self.coordinator.personalities or (
+                last_state.state in self.coordinator.personalities
+            ):
+                self.coordinator.selected_personality = last_state.state

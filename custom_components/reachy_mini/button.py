@@ -22,6 +22,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
+    CONVERSATION_APP_NAME,
     DAEMON_STATE_RUNNING,
     DANCES_DATASET,
     DOMAIN,
@@ -138,6 +139,10 @@ async def async_setup_entry(
     # app catalog was populated at setup time.
     if coordinator.available_apps:
         entities.append(ReachyMiniStartAppButton(coordinator, entry))
+    # Only offer "Start conversation" when the conversation app is
+    # installed on the robot.
+    if CONVERSATION_APP_NAME in coordinator.available_apps:
+        entities.append(ReachyMiniStartConversationButton(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -278,3 +283,34 @@ class ReachyMiniStartAppButton(ReachyMiniEntity, ButtonEntity):
         await self.coordinator.async_post(
             ENDPOINT_APP_START.format(app_name=app_name)
         )
+
+
+START_CONVERSATION_DESCRIPTION = ButtonEntityDescription(
+    key="start_conversation",
+    translation_key="start_conversation",
+    icon="mdi:account-voice",
+)
+
+
+class ReachyMiniStartConversationButton(ReachyMiniEntity, ButtonEntity):
+    """Wake the robot and start a conversation-app session on press.
+
+    Uses the Conversation personality select and the Conversation
+    instructions / context / greeting text entities. The
+    ``reachy_mini.start_conversation`` service action does the same with
+    explicit values (plus voice).
+    """
+
+    entity_description = START_CONVERSATION_DESCRIPTION
+
+    def __init__(
+        self,
+        coordinator: ReachyMiniCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Wire the button to the coordinator."""
+        super().__init__(coordinator, entry, START_CONVERSATION_DESCRIPTION.key)
+
+    async def async_press(self) -> None:
+        """Start a session with the personality / instructions / context / greeting entities."""
+        await self.coordinator.async_start_conversation_from_entities()

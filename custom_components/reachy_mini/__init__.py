@@ -14,7 +14,7 @@ Its only job is to:
    assembles a unified state dict — including HA-shaped derivations
    (`awake`, `active_app_transport`, `remote_session_active`).
 3. Expose that dict as entities across the sensor, binary_sensor,
-   number, select, and button platforms, grouped under a single
+   number, select, button, and text platforms, grouped under a single
    Reachy Mini device.
 
 The integration carries no robot-side logic; it depends only on the
@@ -29,7 +29,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
+from .const import CONVERSATION_APP_NAME, DOMAIN
 from .coordinator import ReachyMiniCoordinator
 from .services import async_register_services, async_unregister_services
 
@@ -42,6 +42,7 @@ PLATFORMS: list[Platform] = [
     Platform.NUMBER,
     Platform.SELECT,
     Platform.BUTTON,
+    Platform.TEXT,
 ]
 
 
@@ -58,6 +59,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_load_move_lists()
     # Same one-shot lifecycle for the installed/available app catalog.
     await coordinator.async_load_available_apps()
+    # Conversation-app personalities, if it's installed and happens to
+    # be running; otherwise fetched on the first Start conversation.
+    if CONVERSATION_APP_NAME in coordinator.available_apps:
+        await coordinator.async_load_personalities()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

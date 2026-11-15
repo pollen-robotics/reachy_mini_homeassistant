@@ -42,6 +42,7 @@
     "select": {
       "motor_mode": { "name": "Motor mode" },
       "app": { "name": "App" },
+      "conversation_personality": { "name": "Conversation personality" },
       "emotion": {
         "name": "Emotion",
         "state": {
@@ -177,10 +178,16 @@
       "restart_daemon": { "name": "Restart daemon" },
       "play_emotion": { "name": "Play emotion" },
       "play_dance": { "name": "Play dance" },
-      "start_app": { "name": "Start app" }
+      "start_app": { "name": "Start app" },
+      "start_conversation": { "name": "Start conversation" }
     },
     "camera": {
       "camera": { "name": "Camera" }
+    },
+    "text": {
+      "conversation_instructions": { "name": "Conversation instructions" },
+      "conversation_context": { "name": "Conversation context" },
+      "conversation_greeting": { "name": "Conversation greeting" }
     }
   }
 }
