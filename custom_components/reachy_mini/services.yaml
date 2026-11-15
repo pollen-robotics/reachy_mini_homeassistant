@@ -25,3 +25,189 @@ play_recorded_move:
       example: happy
       selector:
         text:
+
+start_conversation:
+  name: Start conversation
+  description: >-
+    Start a session of the Reachy Mini conversation app
+    (reachy_mini_conversation_app), waking the robot first if it is
+    asleep and stopping any other running app. Optionally pick the
+    personality and voice, give Reachy instructions and context for
+    this conversation, and have it open with a greeting. Requires the conversation app to be installed on the robot.
+  target:
+    device:
+      integration: reachy_mini
+  fields:
+    personality:
+      name: Personality
+      description: >-
+        Profile name as shown in the conversation app (e.g. default,
+        victorian_butler, captain_circuit). Leave empty to keep the
+        current one.
+      required: false
+      example: victorian_butler
+      selector:
+        text:
+    voice:
+      name: Voice
+      description: >-
+        Voice name offered by the app's realtime backend. Leave empty to
+        keep the current one.
+      required: false
+      selector:
+        text:
+    instructions:
+      name: Instructions
+      description: >-
+        Extra instructions for how Reachy should behave during this
+        conversation. They are appended to the chosen (or current)
+        personality and saved in the app as the "home_assistant_session"
+        personality, which is then used for this session.
+      required: false
+      example: Speak only Spanish and keep answers short. You are helping with a cooking recipe.
+      selector:
+        text:
+          multiline: true
+    context:
+      name: Context
+      description: >-
+        Background about the current situation, sent as the opening
+        message so Reachy starts the conversation with it in mind (for
+        example who just arrived, the weather, or what's on the calendar).
+        Supports templates in automations.
+      required: false
+      example: Anna just got home from work. It is raining and 8°C outside.
+      selector:
+        text:
+          multiline: true
+    greeting:
+      name: Greeting
+      description: >-
+        What Reachy should say to open the conversation, once the session
+        is connected. Reachy says it in character, so the wording may
+        vary slightly.
+      required: false
+      example: Hi! What would you like to talk about?
+      selector:
+        text:
+
+get_personality:
+  name: Get personality
+  description: >-
+    Return a conversation-app personality's instructions, greeting, voice
+    and enabled tools (plus the tools available), e.g. to read a bundled
+    default before customizing it with save_personality. The
+    conversation app must be running.
+  target:
+    device:
+      integration: reachy_mini
+  fields:
+    name:
+      name: Name
+      description: >-
+        Personality name as shown in the Conversation personality select
+        (e.g. victorian_butler, user_personalities/my_butler).
+      required: true
+      example: victorian_butler
+      selector:
+        text:
+
+save_personality:
+  name: Save personality
+  description: >-
+    Create or update a custom conversation-app personality. Bundled
+    personalities are read-only, so customizing one saves an editable
+    copy under a name you choose (use based_on). Fields left empty are
+    kept from based_on, or from the existing custom personality with the
+    same name. The conversation app must be running. Returns the name to
+    use in the Conversation personality select.
+  target:
+    device:
+      integration: reachy_mini
+  fields:
+    name:
+      name: Name
+      description: >-
+        Name of the custom personality (letters, numbers, - and _). It
+        appears as user_personalities/<name>. Reusing a name updates it.
+      required: true
+      example: my_butler
+      selector:
+        text:
+    based_on:
+      name: Based on
+      description: >-
+        Existing personality to copy the instructions, greeting, voice and
+        tools from (e.g. victorian_butler).
+      required: false
+      example: victorian_butler
+      selector:
+        text:
+    instructions:
+      name: Instructions
+      description: >-
+        The personality's full system instructions: who Reachy is, how it
+        talks, what it should and shouldn't do. Replaces the based_on
+        instructions. Required for a brand-new personality without
+        based_on.
+      required: false
+      selector:
+        text:
+          multiline: true
+    greeting:
+      name: Greeting prompt
+      description: >-
+        How Reachy should open each conversation, as an instruction to
+        the model (e.g. "Greet the user warmly and ask about their day").
+      required: false
+      selector:
+        text:
+          multiline: true
+    voice:
+      name: Voice
+      description: >-
+        Voice for this personality (e.g. Aiden, Ryan, Serena, Vivian).
+        Empty keeps the based_on voice, or the app's default.
+      required: false
+      example: Serena
+      selector:
+        text:
+    tools:
+      name: Tools
+      description: >-
+        Tools the personality may use (e.g. dance, play_emotion, camera,
+        move_head, head_tracking, go_to_sleep, remember, forget).
+        get_personality lists the available ones. Empty keeps the
+        based_on tools, or the app's defaults.
+      required: false
+      example: "dance, play_emotion, move_head"
+      selector:
+        text:
+          multiple: true
+    apply:
+      name: Apply now
+      description: Switch the running conversation to this personality.
+      required: false
+      default: false
+      selector:
+        boolean:
+
+delete_personality:
+  name: Delete personality
+  description: >-
+    Delete a custom conversation-app personality. Bundled personalities
+    and the one currently in use (or set as the app's startup
+    personality) can't be deleted. The conversation app must be running.
+  target:
+    device:
+      integration: reachy_mini
+  fields:
+    name:
+      name: Name
+      description: >-
+        Custom personality to delete (my_butler or
+        user_personalities/my_butler).
+      required: true
+      example: my_butler
+      selector:
+        text:

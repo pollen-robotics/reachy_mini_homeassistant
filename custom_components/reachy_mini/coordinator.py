@@ -37,17 +37,29 @@ import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
+    APP_STOP_TIMEOUT,
+    CONVERSATION_APP_NAME,
+    CONVERSATION_LIST_TIMEOUT,
+    CONVERSATION_MANAGE_TIMEOUT,
+    CONVERSATION_SESSION_PROFILE,
+    CONVERSATION_READY_TIMEOUT,
+    CONVERSATION_SESSION_SELECTION,
+    DAEMON_START_TIMEOUT,
     DAEMON_STATE_RUNNING,
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TIMEOUT,
     DOMAIN,
     ENDPOINT_APP_LOCK,
+    ENDPOINT_APP_START,
+    ENDPOINT_APP_STOP_CURRENT,
     ENDPOINT_APPS_LIST_INSTALLED,
+    ENDPOINT_DAEMON_START_WAKE,
     ENDPOINT_DOA,
     ENDPOINT_MOVE_LIST,
     ENDPOINT_MOVE_PLAY,
@@ -56,6 +68,7 @@ from .const import (
     ENDPOINT_VOLUME_SPEAKER,
     RECORDED_MOVE_DATASETS,
 )
+from .conversation import ConversationClient, ConversationRpcError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -130,6 +143,15 @@ class ReachyMiniCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.available_apps: list[str] = []
         # User's last pick from the app select; read by the start-app button.
         self.selected_app: str | None = None
+        # Conversation-app settings the Start conversation button uses,
+        # set through the personality select / instructions, context and
+        # greeting text entities. ``personalities`` is the app's catalog, fetched
+        # over its /rpc socket (only reachable while the app runs).
+        self.personalities: list[str] = []
+        self.selected_personality: str | None = None
+        self.conversation_instructions: str = ""
+        self.conversation_context: str = ""
+        self.conversation_greeting: str = ""
 
     @property
     def host(self) -> str:
@@ -162,7 +184,11 @@ class ReachyMiniCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return None
 
     async def async_post(
-        self, path: str, *, body: dict[str, Any] | None = None
+        self,
+        path: str,
+        *,
+        body: dict[str, Any] | None = None,
+        timeout: float = DEFAULT_TIMEOUT,
     ) -> None:
         """POST to a daemon endpoint and refresh coordinator state.
 
@@ -178,7 +204,7 @@ class ReachyMiniCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             async with self._session.post(
                 url,
                 json=body,
-                timeout=aiohttp.ClientTimeout(total=DEFAULT_TIMEOUT),
+                timeout=aiohttp.ClientTimeout(total=timeout),
             ) as resp:
                 resp.raise_for_status()
         except (aiohttp.ClientError, TimeoutError) as err:
@@ -301,3 +327,171 @@ class ReachyMiniCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.selected_app = names[0]
         else:
             _LOGGER.info("Reachy Mini: no available apps returned by daemon")
+
+    async def async_load_personalities(
+        self, timeout: float = CONVERSATION_LIST_TIMEOUT
+    ) -> None:
+        """Fetch the conversation app's personality list (best-effort).
+
+        The app only answers while it runs, so a failure just keeps the
+        previous list; it's fetched again every time a conversation is
+        started. Listeners are notified so the select picks up changes.
+        """
+        client = ConversationClient(self._session, self.host, timeout)
+        try:
+            result = await client.async_list_personalities()
+        except (ConversationRpcError, TimeoutError, aiohttp.ClientError) as err:
+            _LOGGER.debug("Reachy Mini: personality list unavailable: %s", err)
+            return
+        choices = [
+            str(c) for c in result.get("choices") or [] if c != CONVERSATION_SESSION_SELECTION
+        ]
+        if not choices:
+            return
+        self.personalities = choices
+        if self.selected_personality not in choices:
+            current = result.get("current")
+            self.selected_personality = current if current in choices else choices[0]
+        self.async_update_listeners()
+
+    async def _async_require_conversation_app(self) -> None:
+        """Raise unless the conversation app currently holds the app slot.
+
+        Its /rpc socket only exists while it runs, and managing
+        personalities shouldn't wake the robot or evict another app.
+        """
+        app_lock = await self._fetch_json(ENDPOINT_APP_LOCK) or {}
+        slot = _derive_app_slot(app_lock.get("state"), app_lock.get("holder_name"))
+        if slot["active_app"] != CONVERSATION_APP_NAME:
+            raise HomeAssistantError(
+                "The conversation app is not running — press Start "
+                "conversation (or call reachy_mini.start_conversation) first"
+            )
+
+    async def _async_manage_personality(self, action: Any) -> Any:
+        """Run one personality operation against the running app."""
+        await self._async_require_conversation_app()
+        client = ConversationClient(self._session, self.host, CONVERSATION_MANAGE_TIMEOUT)
+        try:
+            return await action(client)
+        except (ConversationRpcError, TimeoutError, aiohttp.ClientError) as err:
+            raise HomeAssistantError(f"Conversation app: {err}") from err
+
+    async def async_get_personality(self, name: str) -> dict[str, Any]:
+        """Return a personality's instructions, greeting, voice and tools."""
+        loaded = await self._async_manage_personality(
+            lambda client: client.async_call("personalities.load", {"name": name})
+        )
+        loaded = loaded or {}
+        return {
+            "name": name,
+            "instructions": loaded.get("instructions", ""),
+            "greeting": loaded.get("greeting", ""),
+            "voice": loaded.get("voice"),
+            "uses_default_voice": loaded.get("uses_default_voice"),
+            "tools": loaded.get("enabled_tools", []),
+            "available_tools": loaded.get("available_tools", []),
+        }
+
+    async def async_save_personality(self, name: str, **fields: Any) -> str:
+        """Create/update a user personality; refresh the select's catalog."""
+        if name == CONVERSATION_SESSION_PROFILE:
+            raise HomeAssistantError(
+                f"'{name}' is reserved for start_conversation instructions"
+            )
+        selection = await self._async_manage_personality(
+            lambda client: client.async_save_personality(name, **fields)
+        )
+        await self.async_load_personalities()
+        return selection
+
+    async def async_delete_personality(self, name: str) -> None:
+        """Delete a user personality; refresh the select's catalog.
+
+        The app refuses bundled personalities and the active / startup
+        one, with an explanatory error.
+        """
+        # Only custom personalities can be deleted, so a bare name means
+        # the user_personalities/ one.
+        if "/" not in name:
+            name = f"user_personalities/{name}"
+        await self._async_manage_personality(
+            lambda client: client.async_call("personalities.delete", {"name": name})
+        )
+        if self.selected_personality == name:
+            self.selected_personality = None
+        await self.async_load_personalities()
+
+    async def async_start_conversation_from_entities(self) -> None:
+        """Start a conversation with the device page's settings."""
+        await self.async_start_conversation(
+            personality=self.selected_personality,
+            instructions=self.conversation_instructions or None,
+            context=self.conversation_context or None,
+            greeting=self.conversation_greeting or None,
+        )
+
+    async def async_start_conversation(
+        self,
+        *,
+        personality: str | None = None,
+        voice: str | None = None,
+        greeting: str | None = None,
+        instructions: str | None = None,
+        context: str | None = None,
+    ) -> None:
+        """Start a conversation-app session, waking the robot if needed.
+
+        Mirrors what the dashboard / mobile app do to "start talking":
+
+        1. Wake the daemon backend if it's stopped (Wireless sleep).
+        2. Launch ``reachy_mini_conversation_app`` unless it already
+           holds the app slot — stopping any other local app first,
+           since the daemon refuses to start a second one.
+        3. Optionally pick the voice / personality, add session
+           instructions, and open the chat with context and/or a
+           greeting, over the app's JSON-RPC ``/rpc`` socket.
+
+        State is read fresh from the daemon rather than from the last
+        poll, which can be up to 30 s stale.
+        """
+        status = await self._fetch_json(ENDPOINT_STATUS)
+        if not isinstance(status, dict) or status.get("state") != DAEMON_STATE_RUNNING:
+            await self.async_post(ENDPOINT_DAEMON_START_WAKE)
+            await self._async_wait_daemon_running()
+
+        app_lock = await self._fetch_json(ENDPOINT_APP_LOCK) or {}
+        slot = _derive_app_slot(app_lock.get("state"), app_lock.get("holder_name"))
+        if slot["active_app"] != CONVERSATION_APP_NAME:
+            if slot["active_app_transport"] == "local":
+                await self.async_post(ENDPOINT_APP_STOP_CURRENT, timeout=APP_STOP_TIMEOUT)
+            # A remote (WebRTC) session is evicted by start-app itself.
+            await self.async_post(ENDPOINT_APP_START.format(app_name=CONVERSATION_APP_NAME))
+
+        if personality or voice or greeting or instructions or context:
+            client = ConversationClient(self._session, self.host, CONVERSATION_READY_TIMEOUT)
+            try:
+                await client.async_run(
+                    personality=personality,
+                    voice=voice,
+                    greeting=greeting,
+                    instructions=instructions,
+                    context=context,
+                )
+            except (ConversationRpcError, TimeoutError, aiohttp.ClientError) as err:
+                raise HomeAssistantError(f"Conversation app: {err}") from err
+
+        # The app is up now: refresh the catalog (e.g. first start, or
+        # personalities added in the app since).
+        await self.async_load_personalities()
+
+    async def _async_wait_daemon_running(self) -> None:
+        """Poll daemon status until the backend reports ``running``."""
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + DAEMON_START_TIMEOUT
+        while loop.time() < deadline:
+            status = await self._fetch_json(ENDPOINT_STATUS)
+            if isinstance(status, dict) and status.get("state") == DAEMON_STATE_RUNNING:
+                return
+            await asyncio.sleep(1.0)
+        raise HomeAssistantError("Reachy Mini daemon did not start in time")

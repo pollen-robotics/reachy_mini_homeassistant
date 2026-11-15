@@ -92,8 +92,38 @@ RECORDED_MOVE_DATASETS: tuple[str, ...] = (EMOTIONS_DATASET, DANCES_DATASET)
 ENDPOINT_MOVE_LIST = "/api/move/recorded-move-datasets/list/{dataset}"
 ENDPOINT_MOVE_PLAY = "/api/move/play/recorded-move-dataset/{dataset}/{move}"
 
-# Service action surfaced under Developer Tools → Services.
+# Service actions surfaced under Developer Tools → Services.
 SERVICE_PLAY_RECORDED_MOVE = "play_recorded_move"
+SERVICE_START_CONVERSATION = "start_conversation"
+SERVICE_GET_PERSONALITY = "get_personality"
+SERVICE_SAVE_PERSONALITY = "save_personality"
+SERVICE_DELETE_PERSONALITY = "delete_personality"
+
+# --- Conversation app -------------------------------------------------
+# pollen-robotics/reachy_mini_conversation_app: its installed name (also
+# the app-lock holder name while it runs) and the JSON-RPC WebSocket its
+# settings server mounts (custom_app_url = http://0.0.0.0:7860/).
+CONVERSATION_APP_NAME = "reachy_mini_conversation_app"
+CONVERSATION_RPC_PORT = 7860
+CONVERSATION_RPC_PATH = "/rpc"
+# Personality the app stores for sessions started with extra
+# instructions — overwritten on every such start.
+CONVERSATION_SESSION_PROFILE = "home_assistant_session"
+# Its selection name, as personalities.list reports it — hidden from the
+# personality select, since it's rebuilt from the chosen base anyway.
+CONVERSATION_SESSION_SELECTION = f"user_personalities/{CONVERSATION_SESSION_PROFILE}"
+# Quick best-effort personality fetch at setup; never blocks setup long.
+CONVERSATION_LIST_TIMEOUT = 3.0
+# Personality get/save/delete against an already-running app.
+CONVERSATION_MANAGE_TIMEOUT = 15.0
+
+# Waiting for the daemon backend to come up from sleep.
+DAEMON_START_TIMEOUT = 60.0
+# Waiting for the conversation app to boot and its realtime backend to
+# connect (it also reconnects after a personality change).
+CONVERSATION_READY_TIMEOUT = 90.0
+# stop-current-app waits up to 20 s daemon-side for the app to exit.
+APP_STOP_TIMEOUT = 25.0
 
 # --- Camera / WebRTC stream -------------------------------------------
 # The daemon's webrtcsink runs a gst-webrtc-signalling server on this

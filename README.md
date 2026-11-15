@@ -14,11 +14,21 @@ instance, polls the robot's daemon every 30 s, and exposes:
   robot's WebRTC stream server-side (works alongside apps and
   mobile/desktop remote sessions; no SDK changes),
 - writable **selects** for motor mode (enabled / disabled /
-  gravity compensation), emotion, dance, and app,
+  gravity compensation), emotion, dance, app, and conversation
+  personality,
+- **text** settings for conversation instructions, context and greeting,
 - writable **number sliders** for speaker and microphone volume,
 - one-shot action **buttons** for wake up, go to sleep, stop/restart
   the running app, play a test sound, restart the daemon, play
-  emotion, play dance, and start the selected app.
+  emotion, play dance, start the selected app, and start a
+  conversation session,
+- a `reachy_mini.start_conversation` **service action** that starts
+  the [conversation app](https://github.com/pollen-robotics/reachy_mini_conversation_app)
+  with an optional personality, voice, session instructions, context
+  and greeting,
+- `reachy_mini.get_personality` / `save_personality` /
+  `delete_personality` **service actions** to read, customize and
+  remove conversation-app personalities.
 
 Auto-discovery uses the `_reachy-mini._tcp.local.` mDNS advertisement
 the daemon ships out of the box. Polling fans out to several of the
@@ -41,12 +51,14 @@ extra protocols, no broker, no auth.
    with category **Integration**, then click **Add**.
 3. Find **Reachy Mini** in the HACS list and click **Download**.
 4. Restart Home Assistant. The first restart takes a little longer:
-   HA installs the camera's WebRTC dependency (`aiortc`), fetched as a
-   sha256-pinned wheel from this repo (see `wheels/README.md` for why),
-   so the host needs
-   internet access. A failed download shows up in the log as
+   HA installs the camera's WebRTC dependency (`aiortc`), built from a
+   pinned commit of [aiortc on GitHub](https://github.com/aiortc/aiortc)
+   because no PyPI release yet accepts the `av` version HA pins, so the
+   host needs internet access. A failed install shows up in the log as
    *"Setup failed for custom integration 'reachy_mini':
-   Requirements ... not found"* — restart to retry.
+   Requirements ... not found"* — restart to retry. If it persists, the
+   pip error logged just before it usually shows a version conflict with
+   a package HA pins (e.g. `av`).
 
 ### Manual install (no HACS)
 
@@ -105,6 +117,20 @@ its stable `unit_id` (a hash of the audio device serial). Underneath:
 | Emotion | One entry per move in the emotions library | Stores the chosen emotion name; does not play it. Use the *Play emotion* button (or the `reachy_mini.play_recorded_move` service) to trigger playback. |
 | Dance | One entry per move in the dances library | Stores the chosen dance name; does not play it. Use the *Play dance* button (or the `reachy_mini.play_recorded_move` service) to trigger playback. |
 | App | One entry per installed app (`GET /api/apps/list-available/installed`) | Stores the chosen app name; does not start it. Use the *Start app* button to launch it. Only lists apps already installed on the daemon (not the full HF Space / dashboard catalog). Only created when the daemon returns at least one installed app. |
+| Conversation personality | The conversation app's personalities | Personality the *Start conversation* button uses. The list is read from the app, which only answers while it runs; until then only the current pick (`default` at first) is offered, and it's refreshed every time a conversation starts. Only created when the conversation app is installed. |
+
+### Text (conversation settings)
+
+| Entity | Notes |
+|---|---|
+| Conversation instructions | Extra instructions for how Reachy behaves during conversations started with the *Start conversation* button (same as the service action's `instructions`). Leave empty for none. |
+| Conversation context | Background about the current situation sent as the opening message (same as the service action's `context`). Leave empty for none. |
+| Conversation greeting | What Reachy says to open conversations started with the *Start conversation* button, in character (same as the service action's `greeting`). Leave empty for none — with only a context set, Reachy improvises a greeting that takes it into account. |
+
+All are limited to 255 characters (Home Assistant's state limit); use
+the `reachy_mini.start_conversation` service action for longer text.
+Automations can set them with `text.set_value` before pressing the
+button.
 
 ### Numbers (controllable sliders)
 
@@ -130,6 +156,53 @@ the value actually applied.
 | Play emotion | `POST /api/move/play/recorded-move-dataset/{dataset}/{move}` | Plays the emotion currently selected in the *Emotion* select entity. |
 | Play dance | `POST /api/move/play/recorded-move-dataset/{dataset}/{move}` | Plays the dance currently selected in the *Dance* select entity. |
 | Start app | `POST /api/apps/start-app/{app_name}` | Starts the app currently selected in the *App* select entity. Only created when the daemon returns at least one app. |
+| Start conversation | `POST /api/apps/start-app/reachy_mini_conversation_app` | Starts a conversation session (see below) using the *Conversation personality*, *Conversation instructions*, *Conversation context* and *Conversation greeting* entities. Only created when the conversation app is installed. |
+
+### Conversation sessions
+
+The *Start conversation* button and the `reachy_mini.start_conversation`
+service action start a session of the
+[Reachy Mini conversation app](https://github.com/pollen-robotics/reachy_mini_conversation_app),
+the same way the dashboard and mobile app do:
+
+1. If the robot is asleep (daemon backend stopped), wake it with
+   `POST /api/daemon/start?wake_up=true` and wait for it to come up.
+2. If another local app holds the robot, stop it (the daemon only runs
+   one app at a time); a remote WebRTC session is evicted by the start
+   itself. Then `POST /api/apps/start-app/reachy_mini_conversation_app`.
+   If the conversation app is already running it is left as is.
+3. If any of the optional service fields are set, connect to the app's
+   JSON-RPC WebSocket (`ws://<robot>:7860/rpc`), wait for its realtime
+   backend to connect, and apply them:
+
+| Field | JSON-RPC method | Notes |
+|---|---|---|
+| `voice` | `voices.apply` | Voice name from the app's realtime backend. |
+| `personality` | `personalities.apply` | Profile name as listed in the app (e.g. `default`, `victorian_butler`). Applied for this session only; the app's saved startup profile is unchanged. |
+| `instructions` | `personalities.load` → `personalities.save` → `personalities.apply` | Extra instructions for how Reachy behaves during the session. Appended to the chosen personality (or the current one) and saved in the app as the `home_assistant_session` personality, which is then applied. It's overwritten on every start with `instructions`; starting again without a `personality` replaces the previous session instructions instead of stacking them. |
+| `context` | `conversation.say` | Background about the situation (who arrived, the weather, the agenda…) sent as the opening message, so Reachy starts the conversation with it in mind. Templates work, so automations can pass live state. |
+| `greeting` | `conversation.say` | What Reachy should say to open the conversation. The app's model voices it in character, so the wording can vary slightly. Sent in the same opening message as `context`. |
+
+Use `instructions` for rules that should hold for the whole conversation,
+and `context` for facts about the current moment.
+
+```yaml
+action: reachy_mini.start_conversation
+target:
+  device_id: <your Reachy Mini device>
+data:
+  personality: victorian_butler
+  instructions: >-
+    Speak only Spanish. Keep answers under two sentences.
+  context: >-
+    {{ state_attr('person.anna', 'friendly_name') }} just got home.
+    It is {{ states('sensor.outdoor_temperature') }}°C outside.
+  greeting: Welcome home! How was your day?
+```
+
+The action waits up to about 90 s for the app and its backend to be
+ready and fails with the app's error message otherwise (e.g. an unknown
+personality). Stop the session with the *Stop current app* button.
 
 ### Recorded moves (emotions and dances)
 
@@ -148,6 +221,43 @@ For automations and blueprints there's also a global service action,
 `dataset` (HF repo path) and a `move` (string). The dataset can be one
 of the bundled libraries or any custom HF dataset the daemon has
 cached — the daemon validates unknown datasets.
+
+### Customizing personalities
+
+The conversation app ships bundled personalities (`default`,
+`victorian_butler`, `captain_circuit`, …). They are read-only, so to
+customize one you save an editable copy as a *custom* personality, the
+same way the app's own web UI does. Three service actions do this; they
+need the conversation app to be running (start a conversation first)
+and never wake the robot or start the app themselves.
+
+| Action | What it does |
+|---|---|
+| `reachy_mini.get_personality` | Returns a personality's `instructions`, `greeting`, `voice`, enabled `tools` and the `available_tools` (response only; use it in Developer Tools → Actions to read a default before customizing). |
+| `reachy_mini.save_personality` | Creates or updates the custom personality `user_personalities/<name>`. Fields you leave out come from `based_on`, or from the existing custom personality of that name, so you can change only the voice or only the instructions. `apply: true` switches the running conversation to it. Returns its full name. |
+| `reachy_mini.delete_personality` | Deletes a custom personality (`my_butler` or `user_personalities/my_butler`). The app refuses bundled ones and the one in use. |
+
+Saved personalities show up in the *Conversation personality* select
+right away, so the *Start conversation* button can use them.
+
+```yaml
+action: reachy_mini.save_personality
+target:
+  device_id: <your Reachy Mini device>
+data:
+  name: my_butler
+  based_on: victorian_butler
+  instructions: >-
+    You are a Victorian butler obsessed with tea. Address the user as
+    Sir or Madam and mention tea in every answer. One sentence max.
+  greeting: Greet the user with a remark about the tea you are preparing.
+  voice: Serena
+  tools: [dance, play_emotion, move_head]
+  apply: true
+```
+
+The name `home_assistant_session` is reserved: it's the personality the
+`instructions` option of `start_conversation` rewrites on every start.
 
 ### Move catalog reference
 
