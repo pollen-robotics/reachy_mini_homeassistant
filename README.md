@@ -41,10 +41,8 @@ extra protocols, no broker, no auth.
    with category **Integration**, then click **Add**.
 3. Find **Reachy Mini** in the HACS list and click **Download**.
 4. Restart Home Assistant. The first restart takes a little longer:
-   HA installs the camera's WebRTC dependency (`aiortc`), fetched as a
-   sha256-pinned wheel from this repo (see `wheels/README.md` for why),
-   so the host needs
-   internet access. A failed download shows up in the log as
+   HA installs the camera's WebRTC dependency (`aiortc` from PyPI), so
+   the host needs internet access. A failed install shows up in the log as
    *"Setup failed for custom integration 'reachy_mini':
    Requirements ... not found"* — restart to retry.
 

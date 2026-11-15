@@ -25,7 +25,7 @@ import asyncio
 import contextlib
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from fractions import Fraction
 from typing import Any
 
@@ -70,7 +70,7 @@ def _default_pc_factory() -> RTCPeerConnection:
     pc = RTCPeerConnection(RTCConfiguration(iceServers=[]))
     # aiortc has no public way to supply a DTLS certificate — its
     # RTCConfiguration lacks the spec's `certificates` field (checked
-    # at 1.14) — so replace the auto-generated one on the private
+    # at 1.16) — so replace the auto-generated one on the private
     # attribute. test_default_pc_factory_installs_interop_certificate
     # pins this against aiortc upgrades.
     pc._RTCPeerConnection__certificates = [InteropCertificate.generate()]
@@ -126,6 +126,26 @@ def _encode_jpeg(frame: Any) -> bytes:
         return encoder.encode(frame)
     finally:
         encoder.close()
+
+
+@contextlib.asynccontextmanager
+async def _closing_ws(connect: Any) -> AsyncIterator[Any]:
+    """ws_connect() context that leaves no heartbeat timer behind.
+
+    aiohttp 3.14 re-arms the heartbeat when the peer's CLOSE frame
+    arrives during ws.close(): _on_data_received() queues a reset
+    (call_soon) after _set_closed() already cancelled the timers, so a
+    _send_heartbeat TimerHandle outlives the socket. Cancel it again
+    once the socket is closed.
+    """
+    async with connect as ws:
+        try:
+            yield ws
+        finally:
+            await ws.close()
+            cancel = getattr(ws, "_cancel_heartbeat", None)
+            if cancel is not None:
+                cancel()
 
 
 class ReachyMiniStreamClient:
@@ -318,8 +338,8 @@ class ReachyMiniStreamClient:
         self._session_id = None
         clean_stop = False
         try:
-            async with self._session.ws_connect(
-                self.signalling_url, heartbeat=20
+            async with _closing_ws(
+                self._session.ws_connect(self.signalling_url, heartbeat=20)
             ) as ws:
                 try:
                     await self._signalling_loop(ws, pc)

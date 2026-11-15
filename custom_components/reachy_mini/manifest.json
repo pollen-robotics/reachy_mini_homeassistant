@@ -9,7 +9,7 @@
   "integration_type": "device",
   "iot_class": "local_polling",
   "requirements": [
-    "aiortc @ https://raw.githubusercontent.com/pollen-robotics/reachy_mini_homeassistant/main/wheels/aiortc-1.14.0+av19.1-py3-none-any.whl#sha256=bc7b96ef1acca84d73bf2ea43fcc2d63575136e25c2cbd8136ddf3afb6033403"
+    "aiortc==1.16.0"
   ],
   "dependencies": [],
   "zeroconf": [
